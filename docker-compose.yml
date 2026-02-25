@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: beanledger_db
+    environment:
+      POSTGRES_USER: beanledger
+      POSTGRES_PASSWORD: beanledger
+      POSTGRES_DB: beanledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+
+volumes:
+  postgres_data:
