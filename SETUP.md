@@ -11,6 +11,7 @@
 ```bash
 createdb beanledger
 psql beanledger < schema.sql
+psql beanledger < seed.sql
 ```
 
 ## Environment
