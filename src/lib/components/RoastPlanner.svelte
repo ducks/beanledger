@@ -1,0 +1,403 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import type { RoastGroup, Product, Order } from '$lib/types';
+  import { calcGroup, formatWeight } from '$lib/calc';
+
+  let groups = $state<RoastGroup[]>([]);
+  let products = $state<Product[]>([]);
+  let orders = $state<Order[]>([]);
+  let leftovers = $state<Record<string, number>>({});
+  let search = $state('');
+  let qty = $state(1);
+  let dropOpen = $state(false);
+  let units = $state<'lbs' | 'kg'>('lbs');
+  let productionDate = $state(new Date().toISOString().slice(0, 10));
+
+  onMount(async () => {
+    await loadData();
+  });
+
+  async function loadData() {
+    const [groupsRes, productsRes, ordersRes, leftoversRes] = await Promise.all([
+      fetch('/api/groups'),
+      fetch('/api/products'),
+      fetch(`/api/orders?date=${productionDate}`),
+      fetch('/api/leftovers')
+    ]);
+
+    groups = await groupsRes.json();
+    products = await productsRes.json();
+    orders = await ordersRes.json();
+    const leftoversData = await leftoversRes.json();
+    leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
+  }
+
+  const activeProducts = $derived(
+    products.filter((p) => groups.find((g) => g.id === p.group_id))
+  );
+
+  const suggestions = $derived(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    return activeProducts.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 14);
+  });
+
+  const plan = $derived(
+    groups.map((g) => ({
+      ...g,
+      calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, {})
+    }))
+  );
+
+  const roastNeeded = $derived(plan.filter((g) => g.calc.needed > 0));
+
+  async function addOrder(product: Product) {
+    const existing = orders.find((o) => o.product_id === product.id);
+
+    if (existing) {
+      existing.qty += qty;
+      await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(existing)
+      });
+    } else {
+      const newOrder = {
+        id: Date.now() + Math.random() + '',
+        product_id: product.id,
+        qty,
+        production_date: productionDate
+      };
+      orders = [...orders, newOrder];
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder)
+      });
+    }
+
+    search = '';
+    dropOpen = false;
+  }
+
+  async function updateLeftover(groupId: string, value: number) {
+    leftovers[groupId] = value;
+    await fetch('/api/leftovers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_id: groupId, lbs: value })
+    });
+  }
+</script>
+
+<div class="planner">
+  <header class="header">
+    <div class="title">
+      <h1>BeanLedger</h1>
+      <p>Coffee roaster production planner</p>
+    </div>
+    <div class="date">
+      <label>Production Date</label>
+      <input type="date" bind:value={productionDate} on:change={loadData} />
+    </div>
+  </header>
+
+  <div class="search-bar">
+    <input
+      type="text"
+      placeholder="Search products..."
+      bind:value={search}
+      on:focus={() => (dropOpen = true)}
+    />
+    {#if dropOpen && suggestions().length > 0}
+      <div class="dropdown">
+        {#each suggestions() as product}
+          <button class="dropdown-item" on:click={() => addOrder(product)}>
+            {product.name}
+            <span class="meta">{product.lbs} lb</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <div class="groups">
+    {#each roastNeeded as group}
+      {@const calc = group.calc}
+      {@const needsRoast = calc.needed > 0}
+      <div class="group-card">
+        <div class="group-header">
+          <span class="tag">{group.tag}</span>
+          <span class="label">{group.label}</span>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Total</div>
+            <div class="stat-value">{formatWeight(calc.totalLbs, units)}</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">Leftover</div>
+            <input
+              type="number"
+              step="0.01"
+              value={leftovers[group.id] ?? 0}
+              on:change={(e) => updateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
+            />
+            <span class="unit">lb</span>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">Needed</div>
+            <div class="stat-value accent">{needsRoast ? formatWeight(calc.needed, units) : '—'}</div>
+            {#if needsRoast && calc.roastLossPct > 0}
+              <div class="stat-note">green ({calc.roastLossPct}% loss)</div>
+            {/if}
+          </div>
+        </div>
+
+        {#if needsRoast}
+          <div class="batches">
+            <div class="batch-info">
+              <div class="batch-label">
+                Batches <span class="batch-weight">({formatWeight(calc.batchWeight, units)} green/batch)</span>
+              </div>
+              <div class="batch-precise">{calc.batches.toFixed(4)}</div>
+            </div>
+            <div class="batch-rounded">
+              <div class="batch-label">Round Up</div>
+              <div class="batch-up">{calc.batchesUp}</div>
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/each}
+  </div>
+</div>
+
+<style>
+  .planner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+
+  .title h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #b29244;
+    margin: 0 0 4px 0;
+  }
+
+  .title p {
+    margin: 0;
+    color: #6b7360;
+    font-size: 14px;
+  }
+
+  .date label {
+    display: block;
+    font-size: 10px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .date input {
+    padding: 6px 10px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 12px;
+  }
+
+  .search-bar {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .search-bar input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 14px;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 12px;
+    color: #231f20;
+    border-bottom: 1px solid #d8d4bc;
+  }
+
+  .dropdown-item:hover {
+    background: #ddd9c4;
+  }
+
+  .meta {
+    color: #6b7360;
+  }
+
+  .groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .group-card {
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .tag {
+    background: #b29244;
+    color: #f6f4eb;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #231f20;
+  }
+
+  .stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .stat {
+    flex: 1;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #231f20;
+  }
+
+  .stat-value.accent {
+    color: #b75742;
+  }
+
+  .stat input {
+    width: 62px;
+    padding: 3px 6px;
+    background: #ddd9c4;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    color: #b29244;
+    font-family: var(--font-family);
+    font-size: 12px;
+  }
+
+  .unit {
+    font-size: 10px;
+    color: #6b7360;
+    margin-left: 4px;
+  }
+
+  .stat-note {
+    font-size: 9px;
+    color: #6b7360;
+    margin-top: 2px;
+  }
+
+  .batches {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #d8d4bc;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .batch-label {
+    font-size: 9px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .batch-weight {
+    color: #231f20;
+  }
+
+  .batch-precise {
+    font-size: 15px;
+    font-weight: 700;
+    color: #b29244;
+    margin-top: 4px;
+  }
+
+  .batch-rounded {
+    text-align: right;
+  }
+
+  .batch-up {
+    font-size: 32px;
+    font-weight: 700;
+    color: #b75742;
+    line-height: 1;
+    margin-top: 2px;
+  }
+</style>
