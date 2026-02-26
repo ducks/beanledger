@@ -36,11 +36,11 @@
     products.filter((p) => groups.find((g) => g.id === p.group_id))
   );
 
-  const suggestions = $derived(() => {
-    if (!search.trim()) return [];
-    const q = search.toLowerCase();
-    return activeProducts.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 14);
-  });
+  const suggestions = $derived(
+    search.trim()
+      ? activeProducts.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).slice(0, 14)
+      : []
+  );
 
   const plan = $derived(
     groups.map((g) => ({
@@ -109,9 +109,9 @@
       bind:value={search}
       on:focus={() => (dropOpen = true)}
     />
-    {#if dropOpen && suggestions().length > 0}
+    {#if dropOpen && suggestions.length > 0}
       <div class="dropdown">
-        {#each suggestions() as product}
+        {#each suggestions as product}
           <button class="dropdown-item" on:click={() => addOrder(product)}>
             {product.name}
             <span class="meta">{product.lbs} lb</span>
