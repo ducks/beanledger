@@ -21,7 +21,7 @@
       </div>
       <div class="user-menu">
         <span class="username">{data.user.username}</span>
-        <button on:click={handleLogout}>Log out</button>
+        <button onclick={handleLogout}>Log out</button>
       </div>
     </div>
   </header>
