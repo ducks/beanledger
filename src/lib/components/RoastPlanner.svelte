@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { RoastGroup, Product, Order } from '$lib/types';
   import { calcGroup, formatWeight } from '$lib/calc';
+  import CsvImport from './CsvImport.svelte';
 
   let groups = $state<RoastGroup[]>([]);
   let products = $state<Product[]>([]);
@@ -101,6 +102,8 @@
       <input type="date" bind:value={productionDate} on:change={loadData} />
     </div>
   </header>
+
+  <CsvImport productionDate={productionDate} onImportComplete={loadData} />
 
   <div class="search-bar">
     <input
