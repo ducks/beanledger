@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { DATABASE_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 const { Pool } = pg;
 
@@ -8,7 +8,7 @@ let pool: pg.Pool | null = null;
 export function getDb(): pg.Pool {
   if (!pool) {
     pool = new Pool({
-      connectionString: DATABASE_URL
+      connectionString: env.DATABASE_URL
     });
   }
   return pool;
