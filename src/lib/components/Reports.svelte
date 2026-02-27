@@ -1,0 +1,293 @@
+<script lang="ts">
+  import type { Order, Product, RoastGroup } from '$lib/types';
+  import { calcGroup, formatWeight } from '$lib/calc';
+
+  export let orders: Order[];
+  export let products: Product[];
+  export let groups: RoastGroup[];
+  export let leftovers: Record<string, number>;
+  export let units: 'lbs' | 'kg';
+  export let onClose: () => void;
+
+  function handleBackdropClick(e: MouseEvent) {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  }
+
+  const productById = $derived(Object.fromEntries(products.map((p) => [p.id, p])));
+
+  const plan = $derived(
+    groups.map((g) => ({
+      ...g,
+      calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, {})
+    }))
+  );
+
+  const roastNeeded = $derived(plan.filter((g) => g.calc.needed > 0));
+
+  const totalBatches = $derived(roastNeeded.reduce((s, g) => s + g.calc.batchesUp, 0));
+  const totalOrdered = $derived(plan.reduce((s, g) => s + g.calc.totalLbs, 0));
+  const totalGreen = $derived(
+    roastNeeded.reduce((s, g) => s + g.calc.batchesUp * g.calc.batchWeight, 0)
+  );
+
+  // Package sizes
+  const packageSizes = $derived.by(() => {
+    const sizeMap = new Map<number, { size: string; qty: number }>();
+    for (const order of orders) {
+      const product = productById[order.product_id];
+      if (!product) continue;
+
+      const sizeKey = product.lbs;
+      const sizeLabel = product.lbs >= 1 ? `${product.lbs} lb` : `${(product.lbs * 16).toFixed(1)} oz`;
+
+      if (!sizeMap.has(sizeKey)) {
+        sizeMap.set(sizeKey, { size: sizeLabel, qty: 0 });
+      }
+      sizeMap.get(sizeKey)!.qty += order.qty;
+    }
+
+    return Array.from(sizeMap.values()).sort((a, b) => {
+      const aLbs = parseFloat(a.size);
+      const bLbs = parseFloat(b.size);
+      return bLbs - aLbs;
+    });
+  });
+</script>
+
+<div class="modal-backdrop" onclick={handleBackdropClick}>
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Production Reports</div>
+      <button class="close-button" onclick={onClose}>×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Overview Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Batches</div>
+          <div class="stat-value">{totalBatches}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Ordered</div>
+          <div class="stat-value">{formatWeight(totalOrdered, units)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Green Needed</div>
+          <div class="stat-value">{formatWeight(totalGreen, units)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Units</div>
+          <div class="stat-value">{orders.reduce((s, o) => s + o.qty, 0)}</div>
+        </div>
+      </div>
+
+      <!-- Batches by Group -->
+      <div class="section">
+        <div class="section-title">Batches by Group</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Group</th>
+                <th>Total</th>
+                <th>Leftover</th>
+                <th>Needed</th>
+                <th>Batches</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each roastNeeded as group}
+                <tr>
+                  <td>{group.label}</td>
+                  <td>{formatWeight(group.calc.totalLbs, units)}</td>
+                  <td>{formatWeight(leftovers[group.id] ?? 0, units)}</td>
+                  <td>{formatWeight(group.calc.needed, units)}</td>
+                  <td class="batch-cell">{group.calc.batchesUp}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Units by Package Size -->
+      <div class="section">
+        <div class="section-title">Units by Package Size</div>
+        <div class="size-grid">
+          {#each packageSizes as size}
+            <div class="size-card">
+              <div class="size-label">{size.size}</div>
+              <div class="size-qty">{size.qty}</div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal {
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
+    width: 800px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #c8c4a8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-size: 15px;
+    color: #b29244;
+    font-weight: 700;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .close-button:hover {
+    color: #231f20;
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    color: #b29244;
+    font-weight: 700;
+  }
+
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-size: 9px;
+    color: #b29244;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th {
+    background: #eae8d8;
+    padding: 10px;
+    text-align: left;
+    border-bottom: 2px solid #c8c4a8;
+    font-weight: 600;
+    color: #231f20;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    padding: 10px;
+    border-bottom: 1px solid #d8d4bc;
+    color: #231f20;
+  }
+
+  .batch-cell {
+    color: #b29244;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .size-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .size-card {
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .size-label {
+    font-size: 10px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .size-qty {
+    font-size: 18px;
+    color: #b29244;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+</style>
