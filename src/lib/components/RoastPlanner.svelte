@@ -3,6 +3,10 @@
   import type { RoastGroup, Product, Order } from '$lib/types';
   import { calcGroup, formatWeight } from '$lib/calc';
   import CsvImport from './CsvImport.svelte';
+  import PickList from './PickList.svelte';
+  import Reports from './Reports.svelte';
+  import Catalog from './Catalog.svelte';
+  import Settings from './Settings.svelte';
 
   let groups = $state<RoastGroup[]>([]);
   let products = $state<Product[]>([]);
@@ -13,6 +17,12 @@
   let dropOpen = $state(false);
   let units = $state<'lbs' | 'kg'>('lbs');
   let productionDate = $state(new Date().toISOString().slice(0, 10));
+
+  // Modal states
+  let showPickList = $state(false);
+  let showReports = $state(false);
+  let showCatalog = $state(false);
+  let showSettings = $state(false);
 
   onMount(async () => {
     await loadData();
@@ -97,9 +107,27 @@
       <h1>BeanLedger</h1>
       <p>Coffee roaster production planner</p>
     </div>
-    <div class="date">
-      <label>Production Date</label>
-      <input type="date" bind:value={productionDate} on:change={loadData} />
+    <div class="header-actions">
+      <button
+        class="action-button"
+        disabled={orders.length === 0}
+        onclick={() => showPickList = true}
+      >
+        ☰ Pick List
+      </button>
+      <button class="action-button" onclick={() => showReports = true}>
+        ▦ Reports
+      </button>
+      <button class="action-button" onclick={() => showCatalog = true}>
+        ⚙ Catalog
+      </button>
+      <button class="action-button" onclick={() => showSettings = true}>
+        ⚙ Settings
+      </button>
+      <div class="date">
+        <label>Production Date</label>
+        <input type="date" bind:value={productionDate} on:change={loadData} />
+      </div>
     </div>
   </header>
 
@@ -179,6 +207,43 @@
   </div>
 </div>
 
+{#if showPickList}
+  <PickList
+    {orders}
+    {products}
+    {groups}
+    {productionDate}
+    {units}
+    onClose={() => (showPickList = false)}
+  />
+{/if}
+
+{#if showReports}
+  <Reports
+    {orders}
+    {products}
+    {groups}
+    {leftovers}
+    {units}
+    onClose={() => (showReports = false)}
+  />
+{/if}
+
+{#if showCatalog}
+  <Catalog
+    onClose={() => (showCatalog = false)}
+    onUpdate={loadData}
+  />
+{/if}
+
+{#if showSettings}
+  <Settings
+    {units}
+    onClose={() => (showSettings = false)}
+    onUnitsChange={(newUnits) => (units = newUnits)}
+  />
+{/if}
+
 <style>
   .planner {
     max-width: 1200px;
@@ -204,6 +269,37 @@
     margin: 0;
     color: #6b7360;
     font-size: 14px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .action-button {
+    padding: 5px 14px;
+    background: #231f20;
+    border: 1px solid #231f20;
+    border-radius: 5px;
+    color: #f6f4eb;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    white-space: nowrap;
+  }
+
+  .action-button:hover:not(:disabled) {
+    background: #3a3536;
+    border-color: #3a3536;
+  }
+
+  .action-button:disabled {
+    background: none;
+    border-color: #c8c4a8;
+    color: #6b7360;
+    cursor: not-allowed;
   }
 
   .date label {
