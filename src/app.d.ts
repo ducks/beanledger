@@ -1,10 +1,11 @@
+import type { User, Tenant } from '$lib/types';
+
 declare global {
   namespace App {
-    // interface Error {}
-    // interface Locals {}
-    // interface PageData {}
-    // interface PageState {}
-    // interface Platform {}
+    interface Locals {
+      user: User | null;
+      tenant: Tenant | null;
+    }
   }
 }
 

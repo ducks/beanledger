@@ -58,3 +58,25 @@ export const BATCH_WEIGHTS: Record<BatchType, number> = {
   dark: 19.8,
   decaf: 10.73
 };
+
+// Auth types
+export interface Tenant {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  tenant_id: string;
+  created_at: string;
+}
+
+export interface Session {
+  id: string;
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+}
