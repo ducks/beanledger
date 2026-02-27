@@ -1,8 +1,13 @@
 <script lang="ts">
   import type { Product, RoastGroup } from '$lib/types';
 
-  export let onClose: () => void;
-  export let onUpdate: () => void;
+  let {
+    onClose,
+    onUpdate
+  }: {
+    onClose: () => void;
+    onUpdate: () => void;
+  } = $props();
 
   let tab = $state<'products' | 'groups'>('products');
   let products = $state<Product[]>([]);

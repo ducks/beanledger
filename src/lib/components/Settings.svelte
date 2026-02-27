@@ -1,7 +1,13 @@
 <script lang="ts">
-  export let units: 'lbs' | 'kg';
-  export let onClose: () => void;
-  export let onUnitsChange: (newUnits: 'lbs' | 'kg') => void;
+  let {
+    units,
+    onClose,
+    onUnitsChange
+  }: {
+    units: 'lbs' | 'kg';
+    onClose: () => void;
+    onUnitsChange: (newUnits: 'lbs' | 'kg') => void;
+  } = $props();
 
   let localUnits = $state(units);
 
