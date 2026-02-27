@@ -2,12 +2,21 @@
   import type { Order, Product, RoastGroup } from '$lib/types';
   import { formatWeight } from '$lib/calc';
 
-  export let orders: Order[];
-  export let products: Product[];
-  export let groups: RoastGroup[];
-  export let productionDate: string;
-  export let units: 'lbs' | 'kg';
-  export let onClose: () => void;
+  let {
+    orders,
+    products,
+    groups,
+    productionDate,
+    units,
+    onClose
+  }: {
+    orders: Order[];
+    products: Product[];
+    groups: RoastGroup[];
+    productionDate: string;
+    units: 'lbs' | 'kg';
+    onClose: () => void;
+  } = $props();
 
   let pickSort = $state<{ field: 'product' | 'size'; dir: 'asc' | 'desc' }>({
     field: 'size',

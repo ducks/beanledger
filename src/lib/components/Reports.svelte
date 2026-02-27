@@ -2,12 +2,21 @@
   import type { Order, Product, RoastGroup } from '$lib/types';
   import { calcGroup, formatWeight } from '$lib/calc';
 
-  export let orders: Order[];
-  export let products: Product[];
-  export let groups: RoastGroup[];
-  export let leftovers: Record<string, number>;
-  export let units: 'lbs' | 'kg';
-  export let onClose: () => void;
+  let {
+    orders,
+    products,
+    groups,
+    leftovers,
+    units,
+    onClose
+  }: {
+    orders: Order[];
+    products: Product[];
+    groups: RoastGroup[];
+    leftovers: Record<string, number>;
+    units: 'lbs' | 'kg';
+    onClose: () => void;
+  } = $props();
 
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {

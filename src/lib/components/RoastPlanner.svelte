@@ -126,7 +126,7 @@
       </button>
       <div class="date">
         <label>Production Date</label>
-        <input type="date" bind:value={productionDate} on:change={loadData} />
+        <input type="date" bind:value={productionDate} onchange={loadData} />
       </div>
     </div>
   </header>
@@ -138,12 +138,12 @@
       type="text"
       placeholder="Search products..."
       bind:value={search}
-      on:focus={() => (dropOpen = true)}
+      onfocus={() => (dropOpen = true)}
     />
     {#if dropOpen && suggestions.length > 0}
       <div class="dropdown">
         {#each suggestions as product}
-          <button class="dropdown-item" on:click={() => addOrder(product)}>
+          <button class="dropdown-item" onclick={() => addOrder(product)}>
             {product.name}
             <span class="meta">{product.lbs} lb</span>
           </button>
@@ -174,7 +174,7 @@
               type="number"
               step="0.01"
               value={leftovers[group.id] ?? 0}
-              on:change={(e) => updateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
+              onchange={(e) => updateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
             />
             <span class="unit">lb</span>
           </div>
