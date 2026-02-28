@@ -35,11 +35,71 @@ BeanLedger helps coffee roasters plan production:
 4. Calculate batches to roast (accounting for roast loss)
 5. Predict new leftovers after roast
 
-## Status
+## Tech Stack
 
-Initial prototype as standalone React component (`roast-planner-4.jsx`).
+- **Frontend**: SvelteKit 5 (with runes)
+- **Backend**: SvelteKit server routes
+- **Database**: PostgreSQL
+- **Auth**: Session-based with scrypt password hashing
+- **Deployment**: Node.js 22, NixOS service
 
-Next: Extract into proper web app with backend persistence.
+## Multi-Tenancy
+
+BeanLedger supports multiple roaster companies (tenants) with complete data isolation:
+- Each signup creates a new tenant
+- Users belong to a tenant
+- All data (roast groups, products, orders) is tenant-scoped
+- Composite primary keys allow tenants to use same IDs independently
+
+## Development
+
+```bash
+# Start PostgreSQL
+docker compose up -d
+
+# Apply schema
+cat schema.sql | docker exec -i beanledger_db psql -U beanledger
+
+# Seed demo data (optional)
+cat seed.sql | docker exec -i beanledger_db psql -U beanledger
+
+# Install dependencies
+pnpm install
+
+# Run dev server
+pnpm dev
+```
+
+## TODO
+
+### Core Features
+- [ ] Batch size overrides per tenant
+- [ ] Production date history/archive
+- [ ] Edit/delete orders
+- [ ] Manual roast group creation UI
+- [ ] Manual product creation improvements
+- [ ] CSV export for pick lists
+- [ ] Multiple production dates view
+
+### Reports & Analytics
+- [ ] Roast schedule timeline
+- [ ] Green coffee inventory tracking
+- [ ] Historical production metrics
+- [ ] Cost tracking per roast
+
+### Auth & User Management
+- [ ] User roles (admin, team member, read-only)
+- [ ] Email verification
+- [ ] Password reset flow
+- [ ] Session timeout/renewal
+- [ ] Invite team members
+
+### Technical
+- [ ] Migration scripts for schema changes
+- [ ] Database backup/restore
+- [ ] Error monitoring
+- [ ] Performance optimization for large catalogs
+- [ ] Mobile responsive design improvements
 
 ## License
 
