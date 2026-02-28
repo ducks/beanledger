@@ -35,7 +35,7 @@ CREATE INDEX idx_sessions_expires ON sessions(expires_at);
 
 -- Roast groups (coffee families with shared roast profile)
 CREATE TABLE roast_groups (
-  id TEXT PRIMARY KEY,
+  id TEXT NOT NULL,
   label TEXT NOT NULL,
   tag TEXT NOT NULL,
   batch_type TEXT NOT NULL CHECK (batch_type IN ('standard', 'dark', 'decaf')),
@@ -45,37 +45,46 @@ CREATE TABLE roast_groups (
   active BOOLEAN NOT NULL DEFAULT true,
   created_at DATE NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  PRIMARY KEY (id, tenant_id)
 );
 
 -- Products (SKUs with bag sizes)
 CREATE TABLE products (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
+  id TEXT NOT NULL,
+  name TEXT NOT NULL,
   lbs REAL NOT NULL,
-  group_id TEXT NOT NULL REFERENCES roast_groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL,
   active BOOLEAN NOT NULL DEFAULT true,
   created_at DATE NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  PRIMARY KEY (id, tenant_id),
+  FOREIGN KEY (group_id, tenant_id) REFERENCES roast_groups(id, tenant_id) ON DELETE CASCADE
 );
+
+-- Product names should be unique per tenant
+CREATE UNIQUE INDEX products_name_tenant_idx ON products(name, tenant_id);
 
 -- Orders (per production date)
 CREATE TABLE orders (
   id TEXT PRIMARY KEY,
-  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL,
   qty INTEGER NOT NULL,
   production_date DATE NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id, tenant_id) REFERENCES products(id, tenant_id) ON DELETE CASCADE
 );
 
 -- Leftovers (roasted coffee remaining per group)
 CREATE TABLE leftovers (
-  group_id TEXT PRIMARY KEY REFERENCES roast_groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL,
   lbs REAL NOT NULL DEFAULT 0,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  PRIMARY KEY (group_id, tenant_id),
+  FOREIGN KEY (group_id, tenant_id) REFERENCES roast_groups(id, tenant_id) ON DELETE CASCADE
 );
 
 -- Batch size overrides (optional custom batch weights)
