@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Product, RoastGroup } from '$lib/types';
+  import type { Product, RoastGroup, BatchType, GroupType } from '$lib/types';
 
   let {
     onClose,
@@ -13,6 +13,16 @@
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
   let loading = $state(true);
+  let showGroupForm = $state(false);
+  let editingGroup = $state<RoastGroup | null>(null);
+
+  // Form state
+  let formId = $state('');
+  let formLabel = $state('');
+  let formTag = $state('');
+  let formBatchType = $state<BatchType>('standard');
+  let formRoastLossPct = $state(0);
+  let formType = $state<GroupType>('blend');
 
   async function loadData() {
     loading = true;
@@ -70,6 +80,58 @@
     });
     await loadData();
     onUpdate();
+  }
+
+  function openCreateGroupForm() {
+    editingGroup = null;
+    formId = '';
+    formLabel = '';
+    formTag = '';
+    formBatchType = 'standard';
+    formRoastLossPct = 0;
+    formType = 'blend';
+    showGroupForm = true;
+  }
+
+  function openEditGroupForm(group: RoastGroup) {
+    editingGroup = group;
+    formId = group.id;
+    formLabel = group.label;
+    formTag = group.tag;
+    formBatchType = group.batch_type;
+    formRoastLossPct = group.roast_loss_pct;
+    formType = group.type;
+    showGroupForm = true;
+  }
+
+  function closeGroupForm() {
+    showGroupForm = false;
+    editingGroup = null;
+  }
+
+  async function saveGroup() {
+    const groupData = {
+      id: formId,
+      label: formLabel,
+      tag: formTag,
+      batch_type: formBatchType,
+      roast_loss_pct: formRoastLossPct,
+      type: formType,
+      components: [],
+      active: true,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+
+    const method = editingGroup ? 'PUT' : 'POST';
+    await fetch('/api/groups', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(groupData)
+    });
+
+    await loadData();
+    onUpdate();
+    closeGroupForm();
   }
 </script>
 
@@ -143,11 +205,13 @@
       {:else}
         <div class="section-header">
           <div class="section-title">Roast Groups</div>
+          <button class="add-button" onclick={openCreateGroupForm}>+ Add Roast Group</button>
         </div>
         <div class="table-container">
           <table>
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Label</th>
                 <th>Tag</th>
                 <th>Batch Type</th>
@@ -160,6 +224,7 @@
             <tbody>
               {#each groups as group}
                 <tr class:inactive={!group.active}>
+                  <td>{group.id}</td>
                   <td>{group.label}</td>
                   <td>{group.tag}</td>
                   <td>{group.batch_type}</td>
@@ -174,9 +239,14 @@
                     </button>
                   </td>
                   <td>
-                    <button class="delete-button" onclick={() => deleteGroup(group.id)}>
-                      Delete
-                    </button>
+                    <div class="action-buttons">
+                      <button class="edit-button" onclick={() => openEditGroupForm(group)}>
+                        Edit
+                      </button>
+                      <button class="delete-button" onclick={() => deleteGroup(group.id)}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               {/each}
@@ -187,6 +257,85 @@
     </div>
   </div>
 </div>
+
+{#if showGroupForm}
+  <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeGroupForm()}>
+    <div class="form-modal">
+      <div class="form-header">
+        <div class="form-title">{editingGroup ? 'Edit' : 'Create'} Roast Group</div>
+        <button class="close-button" onclick={closeGroupForm}>×</button>
+      </div>
+
+      <div class="form-body">
+        <div class="form-group">
+          <label>ID</label>
+          <input
+            type="text"
+            bind:value={formId}
+            placeholder="e.g., french, dark, decaf"
+            disabled={!!editingGroup}
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Label</label>
+          <input
+            type="text"
+            bind:value={formLabel}
+            placeholder="e.g., French Roast, Dark Roast"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Tag</label>
+          <input
+            type="text"
+            bind:value={formTag}
+            placeholder="e.g., FR, DR (short code)"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Batch Type</label>
+            <select bind:value={formBatchType}>
+              <option value="standard">Standard (20.2 lb)</option>
+              <option value="dark">Dark (19.8 lb)</option>
+              <option value="decaf">Decaf (10.73 lb)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Type</label>
+            <select bind:value={formType}>
+              <option value="blend">Blend</option>
+              <option value="single_origin">Single Origin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Roast Loss %</label>
+          <input
+            type="number"
+            bind:value={formRoastLossPct}
+            step="0.1"
+            min="0"
+            max="100"
+            placeholder="e.g., 15"
+          />
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button class="cancel-button" onclick={closeGroupForm}>Cancel</button>
+        <button class="save-button" onclick={saveGroup}>
+          {editingGroup ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .modal-backdrop {
@@ -351,6 +500,27 @@
     background: #9d7d37;
   }
 
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .edit-button {
+    padding: 4px 10px;
+    background: none;
+    border: 1px solid #b29244;
+    border-radius: 3px;
+    color: #b29244;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .edit-button:hover {
+    background: #b29244;
+    color: #f6f4eb;
+  }
+
   .delete-button {
     padding: 4px 10px;
     background: none;
@@ -365,5 +535,124 @@
   .delete-button:hover {
     background: #b75742;
     color: #f6f4eb;
+  }
+
+  /* Form Modal Styles */
+  .form-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+  }
+
+  .form-modal {
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
+    width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  }
+
+  .form-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #c8c4a8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .form-title {
+    font-size: 15px;
+    color: #b29244;
+    font-weight: 700;
+  }
+
+  .form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #231f20;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #f6f4eb;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 13px;
+  }
+
+  .form-group input:disabled {
+    background: #ddd9c4;
+    color: #6b7360;
+    cursor: not-allowed;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .form-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 16px 20px;
+    border-top: 1px solid #c8c4a8;
+  }
+
+  .save-button {
+    padding: 8px 16px;
+    background: #b29244;
+    border: none;
+    border-radius: 4px;
+    color: #f6f4eb;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .save-button:hover {
+    background: #9d7d37;
+  }
+
+  .cancel-button {
+    padding: 8px 16px;
+    background: none;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    color: #6b7360;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .cancel-button:hover {
+    background: #ddd9c4;
   }
 </style>
