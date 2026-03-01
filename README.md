@@ -41,6 +41,7 @@ BeanLedger helps coffee roasters plan production:
 - **Backend**: SvelteKit server routes
 - **Database**: PostgreSQL
 - **Auth**: Session-based with scrypt password hashing
+- **Testing**: Vitest (14 tests covering core business logic)
 - **Deployment**: Node.js 22, NixOS service
 
 ## Multi-Tenancy
@@ -68,16 +69,26 @@ pnpm install
 
 # Run dev server
 pnpm dev
+
+# Run tests
+pnpm test              # Run once
+pnpm test:watch        # Watch mode
+pnpm test:ui           # Interactive UI
 ```
+
+## Recent Updates
+
+### 2026-03-01
+- ✅ **Roast Group CRUD UI** - Create, edit, delete roast groups via Catalog modal
+- ✅ **Product Edit UI** - Edit product name, weight, and roast group assignment
+- ✅ **Test Suite** - Vitest with 14 passing tests covering calc.ts business logic
 
 ## TODO
 
 ### Core Features
 - [ ] Batch size overrides per tenant
 - [ ] Production date history/archive
-- [ ] Edit/delete orders
-- [ ] Manual roast group creation UI
-- [ ] Manual product creation improvements
+- [ ] Edit/delete orders UI
 - [ ] CSV export for pick lists
 - [ ] Multiple production dates view
 
@@ -100,6 +111,7 @@ pnpm dev
 - [ ] Error monitoring
 - [ ] Performance optimization for large catalogs
 - [ ] Mobile responsive design improvements
+- [ ] Additional test coverage (API endpoints, CSV parsing)
 
 ## License
 
