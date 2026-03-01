@@ -16,13 +16,21 @@
   let showGroupForm = $state(false);
   let editingGroup = $state<RoastGroup | null>(null);
 
-  // Form state
+  // Roast group form state
   let formId = $state('');
   let formLabel = $state('');
   let formTag = $state('');
   let formBatchType = $state<BatchType>('standard');
   let formRoastLossPct = $state(0);
   let formType = $state<GroupType>('blend');
+
+  // Product form state
+  let showProductForm = $state(false);
+  let editingProduct = $state<Product | null>(null);
+  let productFormId = $state('');
+  let productFormName = $state('');
+  let productFormLbs = $state(0);
+  let productFormGroupId = $state('');
 
   async function loadData() {
     loading = true;
@@ -133,6 +141,41 @@
     onUpdate();
     closeGroupForm();
   }
+
+  function openEditProductForm(product: Product) {
+    editingProduct = product;
+    productFormId = product.id;
+    productFormName = product.name;
+    productFormLbs = product.lbs;
+    productFormGroupId = product.group_id;
+    showProductForm = true;
+  }
+
+  function closeProductForm() {
+    showProductForm = false;
+    editingProduct = null;
+  }
+
+  async function saveProduct() {
+    const productData = {
+      id: productFormId,
+      name: productFormName,
+      lbs: productFormLbs,
+      group_id: productFormGroupId,
+      active: editingProduct?.active ?? true,
+      created_at: editingProduct?.created_at ?? new Date().toISOString().slice(0, 10)
+    };
+
+    await fetch('/api/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+
+    await loadData();
+    onUpdate();
+    closeProductForm();
+  }
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
@@ -193,9 +236,14 @@
                     </button>
                   </td>
                   <td>
-                    <button class="delete-button" onclick={() => deleteProduct(product.id)}>
-                      Delete
-                    </button>
+                    <div class="action-buttons">
+                      <button class="edit-button" onclick={() => openEditProductForm(product)}>
+                        Edit
+                      </button>
+                      <button class="delete-button" onclick={() => deleteProduct(product.id)}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               {/each}
@@ -332,6 +380,64 @@
         <button class="save-button" onclick={saveGroup}>
           {editingGroup ? 'Update' : 'Create'}
         </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Product Edit Form Modal -->
+{#if showProductForm}
+  <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeProductForm()}>
+    <div class="form-modal">
+      <div class="form-header">
+        <div class="form-title">Edit Product</div>
+        <button class="close-button" onclick={closeProductForm}>×</button>
+      </div>
+
+      <div class="form-body">
+        <div class="form-group">
+          <label>ID</label>
+          <input
+            type="text"
+            bind:value={productFormId}
+            disabled={true}
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Name</label>
+          <input
+            type="text"
+            bind:value={productFormName}
+            placeholder="e.g., Woodlawn Blend - 10oz"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Weight (lbs)</label>
+          <input
+            type="number"
+            bind:value={productFormLbs}
+            step="0.01"
+            min="0"
+            placeholder="e.g., 0.625"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Roast Group</label>
+          <select bind:value={productFormGroupId}>
+            <option value="">Select a roast group</option>
+            {#each groups as group}
+              <option value={group.id}>{group.label}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button class="cancel-button" onclick={closeProductForm}>Cancel</button>
+        <button class="save-button" onclick={saveProduct}>Update</button>
       </div>
     </div>
   </div>
