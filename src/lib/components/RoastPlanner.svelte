@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { RoastGroup, Product, Order } from '$lib/types';
+  import type { RoastGroup, Product, Order, BatchOverride } from '$lib/types';
   import { calcGroup, formatWeight } from '$lib/calc';
   import CsvImport from './CsvImport.svelte';
   import PickList from './PickList.svelte';
@@ -12,6 +12,7 @@
   let products = $state<Product[]>([]);
   let orders = $state<Order[]>([]);
   let leftovers = $state<Record<string, number>>({});
+  let batchOverrides = $state<Record<string, number>>({});
   let search = $state('');
   let qty = $state(1);
   let dropOpen = $state(false);
@@ -26,6 +27,7 @@
 
   onMount(async () => {
     await loadData();
+    await loadBatchOverrides();
   });
 
   async function loadData() {
@@ -43,6 +45,12 @@
     leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
   }
 
+  async function loadBatchOverrides() {
+    const res = await fetch('/api/batch-overrides');
+    const overrides: BatchOverride[] = await res.json();
+    batchOverrides = overrides.reduce((acc, o) => ({ ...acc, [o.batch_type]: o.weight_lbs }), {});
+  }
+
   const activeProducts = $derived(
     products.filter((p) => groups.find((g) => g.id === p.group_id))
   );
@@ -56,7 +64,7 @@
   const plan = $derived(
     groups.map((g) => ({
       ...g,
-      calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, {})
+      calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, batchOverrides)
     }))
   );
 
@@ -241,6 +249,7 @@
     {units}
     onClose={() => (showSettings = false)}
     onUnitsChange={(newUnits) => (units = newUnits)}
+    onBatchOverridesChange={loadBatchOverrides}
   />
 {/if}
 

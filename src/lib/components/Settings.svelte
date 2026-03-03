@@ -1,15 +1,49 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import type { BatchOverride, BatchType } from '$lib/types';
+  import { BATCH_WEIGHTS } from '$lib/types';
+
   let {
     units,
     onClose,
-    onUnitsChange
+    onUnitsChange,
+    onBatchOverridesChange
   }: {
     units: 'lbs' | 'kg';
     onClose: () => void;
     onUnitsChange: (newUnits: 'lbs' | 'kg') => void;
+    onBatchOverridesChange?: () => void;
   } = $props();
 
   let localUnits = $state(units);
+  let batchOverrides = $state<Record<BatchType, number>>({
+    standard: BATCH_WEIGHTS.standard,
+    dark: BATCH_WEIGHTS.dark,
+    decaf: BATCH_WEIGHTS.decaf
+  });
+  let overridesLoaded = $state(false);
+
+  onMount(async () => {
+    await loadBatchOverrides();
+  });
+
+  async function loadBatchOverrides() {
+    const res = await fetch('/api/batch-overrides');
+    const overrides: BatchOverride[] = await res.json();
+
+    // Start with defaults
+    batchOverrides = {
+      standard: BATCH_WEIGHTS.standard,
+      dark: BATCH_WEIGHTS.dark,
+      decaf: BATCH_WEIGHTS.decaf
+    };
+
+    // Apply any overrides
+    for (const override of overrides) {
+      batchOverrides[override.batch_type] = override.weight_lbs;
+    }
+    overridesLoaded = true;
+  }
 
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
@@ -17,9 +51,40 @@
     }
   }
 
-  function save() {
+  async function save() {
+    // Save unit preference
     onUnitsChange(localUnits);
+
+    // Save batch overrides
+    for (const batchType of ['standard', 'dark', 'decaf'] as BatchType[]) {
+      const weight = batchOverrides[batchType];
+      const defaultWeight = BATCH_WEIGHTS[batchType];
+
+      if (weight !== defaultWeight) {
+        // Save override
+        await fetch('/api/batch-overrides', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batch_type: batchType, weight_lbs: weight })
+        });
+      } else {
+        // Delete override (revert to default)
+        await fetch(`/api/batch-overrides?batch_type=${batchType}`, {
+          method: 'DELETE'
+        });
+      }
+    }
+
+    onBatchOverridesChange?.();
     onClose();
+  }
+
+  function resetToDefaults() {
+    batchOverrides = {
+      standard: BATCH_WEIGHTS.standard,
+      dark: BATCH_WEIGHTS.dark,
+      decaf: BATCH_WEIGHTS.decaf
+    };
   }
 </script>
 
@@ -46,22 +111,45 @@
       </div>
 
       <div class="setting-section">
-        <div class="setting-label">Batch Sizes</div>
+        <div class="setting-header">
+          <div class="setting-label">Batch Sizes (lbs)</div>
+          <button class="reset-button" onclick={resetToDefaults}>Reset to Defaults</button>
+        </div>
         <div class="batch-info">
           <div class="batch-row">
-            <span class="batch-name">Large (Standard)</span>
-            <span class="batch-value">20.2 lb</span>
+            <span class="batch-name">Standard</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              bind:value={batchOverrides.standard}
+              class="batch-input"
+            />
           </div>
           <div class="batch-row">
-            <span class="batch-name">Medium (Dark)</span>
-            <span class="batch-value">19.8 lb</span>
+            <span class="batch-name">Dark</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              bind:value={batchOverrides.dark}
+              class="batch-input"
+            />
           </div>
           <div class="batch-row">
-            <span class="batch-name">Small (Decaf)</span>
-            <span class="batch-value">10.73 lb</span>
+            <span class="batch-name">Decaf</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              bind:value={batchOverrides.decaf}
+              class="batch-input"
+            />
           </div>
         </div>
-        <div class="note">Batch sizes are configured per roast group</div>
+        <div class="note">
+          Defaults: Standard {BATCH_WEIGHTS.standard} lb, Dark {BATCH_WEIGHTS.dark} lb, Decaf {BATCH_WEIGHTS.decaf} lb
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -128,13 +216,34 @@
     margin-bottom: 24px;
   }
 
+  .setting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
   .setting-label {
     font-size: 11px;
     font-weight: 600;
     color: #231f20;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 10px;
+  }
+
+  .reset-button {
+    padding: 4px 10px;
+    background: none;
+    border: 1px solid #c8c4a8;
+    border-radius: 3px;
+    color: #6b7360;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .reset-button:hover {
+    background: #f6f4eb;
   }
 
   .radio-group {
@@ -177,6 +286,24 @@
   .batch-value {
     color: #231f20;
     font-weight: 600;
+  }
+
+  .batch-input {
+    width: 80px;
+    padding: 4px 8px;
+    border: 1px solid #c8c4a8;
+    border-radius: 3px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #231f20;
+    font-family: var(--font-family);
+    text-align: right;
+  }
+
+  .batch-input:focus {
+    outline: none;
+    border-color: #b29244;
   }
 
   .note {
