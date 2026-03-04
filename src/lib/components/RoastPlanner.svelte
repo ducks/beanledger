@@ -45,6 +45,99 @@
     leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
   }
 
+  async function handleProductionDateChange(newDate: string) {
+    const oldDate = productionDate;
+
+    // Save snapshot of current date before switching (if there are orders)
+    if (orders.length > 0 && oldDate) {
+      await saveSnapshot(oldDate);
+    }
+
+    // Switch to new date
+    productionDate = newDate;
+
+    // Try to load snapshot for new date
+    const snapshot = await loadSnapshot(newDate);
+
+    if (snapshot) {
+      // Restore from snapshot
+      await restoreFromSnapshot(snapshot);
+    } else {
+      // No snapshot - load fresh data for this date
+      await loadData();
+    }
+  }
+
+  async function saveSnapshot(date: string) {
+    try {
+      // Convert orders to product names + quantities
+      const orderData = orders.map(o => {
+        const product = products.find(p => p.id === o.product_id);
+        return product ? { product_name: product.name, qty: o.qty } : null;
+      }).filter(Boolean);
+
+      await fetch('/api/snapshots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          production_date: date,
+          orders: orderData,
+          leftovers
+        })
+      });
+    } catch (err) {
+      console.error('Failed to save snapshot:', err);
+    }
+  }
+
+  async function loadSnapshot(date: string) {
+    try {
+      const res = await fetch(`/api/snapshots?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data?.summary ? data : null;
+      }
+      return null;
+    } catch (err) {
+      console.error('Failed to load snapshot:', err);
+      return null;
+    }
+  }
+
+  async function restoreFromSnapshot(snapshot: any) {
+    try {
+      // Load products and groups (current catalog)
+      const [groupsRes, productsRes] = await Promise.all([
+        fetch('/api/groups'),
+        fetch('/api/products')
+      ]);
+
+      groups = await groupsRes.json();
+      products = await productsRes.json();
+
+      // Restore orders from snapshot
+      const restoredOrders: Order[] = [];
+      for (const orderData of snapshot.summary.orders || []) {
+        const product = products.find(p => p.name === orderData.product_name);
+        if (product) {
+          restoredOrders.push({
+            id: `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            product_id: product.id,
+            qty: orderData.qty,
+            production_date: productionDate
+          });
+        }
+      }
+      orders = restoredOrders;
+
+      // Restore leftovers from snapshot
+      leftovers = snapshot.summary.leftovers || {};
+    } catch (err) {
+      console.error('Failed to restore from snapshot:', err);
+      await loadData();
+    }
+  }
+
   async function loadBatchOverrides() {
     const res = await fetch('/api/batch-overrides');
     const overrides: BatchOverride[] = await res.json();
@@ -134,7 +227,7 @@
       </button>
       <div class="date">
         <label>Production Date</label>
-        <input type="date" bind:value={productionDate} onchange={loadData} />
+        <input type="date" bind:value={productionDate} onchange={(e) => handleProductionDateChange(e.currentTarget.value)} />
       </div>
     </div>
   </header>
