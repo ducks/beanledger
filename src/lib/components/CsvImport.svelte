@@ -1,8 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { MatchResult } from '$lib/csv';
+  import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
+  import type { RoastGroup } from '$lib/types';
 
-  export let productionDate: string;
-  export let onImportComplete: () => void;
+  let {
+    productionDate,
+    onImportComplete
+  }: {
+    productionDate: string;
+    onImportComplete: () => void;
+  } = $props();
 
   let csvText = '';
   let fileInput: HTMLInputElement;
@@ -10,6 +18,73 @@
   let preview: MatchResult[] | null = null;
   let error = '';
   let stats = { total: 0, matched: 0, fuzzy: 0, unmatched: 0 };
+  let groups: RoastGroup[] = [];
+  let ignoredSkus = $state<string[]>([]);
+  let addingSkus = $state<Record<string, { lbs: number; groupId: string }>>({});
+
+  onMount(async () => {
+    await loadGroups();
+  });
+
+  async function loadGroups() {
+    const res = await fetch('/api/groups');
+    groups = await res.json();
+  }
+
+  const unmatchedProducts = $derived(
+    preview?.filter(m => m.confidence === 'none' && !ignoredSkus.includes(m.productName)) || []
+  );
+
+  function startAddSku(productName: string) {
+    const lbs = parseLbsFromSkuName(productName);
+    const suggestedLabel = skuToGroupLabel(productName);
+    const suggestedGroup = groups.find(g => g.label.toLowerCase().includes(suggestedLabel.toLowerCase()));
+
+    addingSkus[productName] = {
+      lbs: lbs || 0,
+      groupId: suggestedGroup?.id || groups[0]?.id || ''
+    };
+  }
+
+  async function confirmAddSku(productName: string) {
+    const formData = addingSkus[productName];
+    if (!formData || !formData.groupId) return;
+
+    const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const newProduct = {
+      id: productId,
+      name: productName,
+      lbs: formData.lbs,
+      group_id: formData.groupId,
+      active: true,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+
+    try {
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+
+      // Remove from adding state
+      delete addingSkus[productName];
+
+      // Re-run preview to pick up the new product
+      await handlePreview();
+    } catch (err) {
+      error = 'Failed to create product';
+    }
+  }
+
+  function ignoreSku(productName: string) {
+    ignoredSkus = [...ignoredSkus, productName];
+    delete addingSkus[productName];
+  }
+
+  function cancelAddSku(productName: string) {
+    delete addingSkus[productName];
+  }
 
   function handleFileSelect(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -158,6 +233,65 @@
           </div>
         {/if}
       </div>
+
+      {#if unmatchedProducts.length > 0}
+        <div class="unmatched-section">
+          <h4>Unmapped Products ({unmatchedProducts.length})</h4>
+          <p class="help-text">These products were not found in your catalog. Add them or ignore to continue.</p>
+
+          {#each unmatchedProducts as match}
+            <div class="unmatched-product">
+              <div class="product-header">
+                <strong>{match.productName}</strong>
+                <span class="qty-badge">Qty: {match.quantity}</span>
+              </div>
+
+              {#if addingSkus[match.productName]}
+                {@const formData = addingSkus[match.productName]}
+                <div class="add-form">
+                  <div class="form-row">
+                    <label>
+                      Weight (lbs):
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        bind:value={formData.lbs}
+                        class="weight-input"
+                      />
+                    </label>
+                    <label>
+                      Roast Group:
+                      <select bind:value={formData.groupId} class="group-select">
+                        {#each groups as group}
+                          <option value={group.id}>{group.label}</option>
+                        {/each}
+                      </select>
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button type="button" class="btn-confirm" onclick={() => confirmAddSku(match.productName)}>
+                      Confirm Add
+                    </button>
+                    <button type="button" class="btn-cancel" onclick={() => cancelAddSku(match.productName)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              {:else}
+                <div class="product-actions">
+                  <button type="button" class="btn-add" onclick={() => startAddSku(match.productName)}>
+                    Add to Catalog
+                  </button>
+                  <button type="button" class="btn-ignore" onclick={() => ignoreSku(match.productName)}>
+                    Ignore
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
 
       <div class="preview-table">
         <table>
@@ -383,5 +517,141 @@
     color: #c33;
     margin: 0;
     flex: 1;
+  }
+
+  .unmatched-section {
+    background: #fff9e6;
+    border: 1px solid #e6d68a;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .unmatched-section h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #663;
+  }
+
+  .help-text {
+    margin: 0 0 1rem 0;
+    font-size: 0.85rem;
+    color: #666;
+  }
+
+  .unmatched-product {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .unmatched-product:last-child {
+    margin-bottom: 0;
+  }
+
+  .product-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .qty-badge {
+    background: #f0f0f0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .product-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-add,
+  .btn-ignore,
+  .btn-confirm,
+  .btn-cancel {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .btn-add {
+    background: #4caf50;
+    color: white;
+  }
+
+  .btn-add:hover {
+    background: #45a049;
+  }
+
+  .btn-ignore {
+    background: #999;
+    color: white;
+  }
+
+  .btn-ignore:hover {
+    background: #888;
+  }
+
+  .btn-confirm {
+    background: #667eea;
+    color: white;
+  }
+
+  .btn-confirm:hover {
+    background: #5568d3;
+  }
+
+  .btn-cancel {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+  }
+
+  .btn-cancel:hover {
+    background: #e8e8e8;
+  }
+
+  .add-form {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eee;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .form-row label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #555;
+  }
+
+  .weight-input,
+  .group-select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 0.5rem;
   }
 </style>
