@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Order, Product, RoastGroup } from '$lib/types';
   import { calcGroup, formatWeight } from '$lib/calc';
 
@@ -18,6 +19,44 @@
     onClose: () => void;
   } = $props();
 
+  let dateFrom = $state('');
+  let dateTo = $state('');
+  let rangeOrders = $state<Order[]>([]);
+  let loading = $state(false);
+
+  onMount(() => {
+    // Start with current orders
+    rangeOrders = orders;
+  });
+
+  async function fetchRangeOrders() {
+    if (!dateFrom && !dateTo) {
+      rangeOrders = orders;
+      return;
+    }
+
+    loading = true;
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+
+      const res = await fetch(`/api/orders?${params}`);
+      rangeOrders = await res.json();
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+      rangeOrders = orders;
+    } finally {
+      loading = false;
+    }
+  }
+
+  function clearDateRange() {
+    dateFrom = '';
+    dateTo = '';
+    rangeOrders = orders;
+  }
+
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
       onClose();
@@ -26,10 +65,26 @@
 
   const productById = $derived(Object.fromEntries(products.map((p) => [p.id, p])));
 
+  // Group orders by production date
+  const ordersByDate = $derived.by(() => {
+    const byDate = new Map<string, Order[]>();
+    for (const order of rangeOrders) {
+      if (!byDate.has(order.production_date)) {
+        byDate.set(order.production_date, []);
+      }
+      byDate.get(order.production_date)!.push(order);
+    }
+    return byDate;
+  });
+
+  const uniqueDates = $derived(
+    Array.from(ordersByDate.keys()).sort((a, b) => b.localeCompare(a))
+  );
+
   const plan = $derived(
     groups.map((g) => ({
       ...g,
-      calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, {})
+      calc: calcGroup(g, rangeOrders, products, leftovers[g.id] ?? 0, {})
     }))
   );
 
@@ -44,7 +99,7 @@
   // Package sizes
   const packageSizes = $derived.by(() => {
     const sizeMap = new Map<number, { size: string; qty: number }>();
-    for (const order of orders) {
+    for (const order of rangeOrders) {
       const product = productById[order.product_id];
       if (!product) continue;
 
@@ -70,6 +125,30 @@
     <div class="modal-header">
       <div class="modal-title">Production Reports</div>
       <button class="close-button" onclick={onClose}>×</button>
+    </div>
+
+    <!-- Date Range Filter -->
+    <div class="date-range-filter">
+      <span class="filter-label">Date Range</span>
+      <div class="date-inputs">
+        <input
+          type="date"
+          bind:value={dateFrom}
+          onchange={fetchRangeOrders}
+          class="date-input"
+        />
+        <span class="date-separator">—</span>
+        <input
+          type="date"
+          bind:value={dateTo}
+          onchange={fetchRangeOrders}
+          class="date-input"
+        />
+      </div>
+      {#if dateFrom || dateTo}
+        <button class="clear-button" onclick={clearDateRange}>Clear</button>
+      {/if}
+      <span class="date-count">{uniqueDates.length} day{uniqueDates.length !== 1 ? 's' : ''} in range</span>
     </div>
 
     <div class="modal-body">
@@ -298,5 +377,64 @@
     color: #b29244;
     font-weight: 700;
     margin-top: 4px;
+  }
+
+  .date-range-filter {
+    padding: 10px 20px;
+    border-bottom: 1px solid #d8d4bc;
+    background: #f6f4eb;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .filter-label {
+    font-size: 10px;
+    color: #6b7360;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .date-input {
+    padding: 4px 8px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 11px;
+  }
+
+  .date-separator {
+    color: #6b7360;
+    font-size: 11px;
+  }
+
+  .clear-button {
+    font-size: 10px;
+    color: #6b7360;
+    background: none;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .clear-button:hover {
+    background: #eae8d8;
+  }
+
+  .date-count {
+    font-size: 10px;
+    color: #6b7360;
+    margin-left: auto;
+    font-family: var(--font-family);
   }
 </style>

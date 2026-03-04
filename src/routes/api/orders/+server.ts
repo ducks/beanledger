@@ -9,14 +9,36 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   }
 
   const date = url.searchParams.get('date');
+  const dateFrom = url.searchParams.get('dateFrom');
+  const dateTo = url.searchParams.get('dateTo');
 
   let result;
   if (date) {
+    // Single date
     result = await query<Order>(
       'SELECT * FROM orders WHERE production_date = $1 AND tenant_id = $2 ORDER BY created_at DESC',
       [date, locals.tenant.id]
     );
+  } else if (dateFrom || dateTo) {
+    // Date range
+    const conditions = ['tenant_id = $1'];
+    const params: any[] = [locals.tenant.id];
+
+    if (dateFrom) {
+      params.push(dateFrom);
+      conditions.push(`production_date >= $${params.length}`);
+    }
+    if (dateTo) {
+      params.push(dateTo);
+      conditions.push(`production_date <= $${params.length}`);
+    }
+
+    result = await query<Order>(
+      `SELECT * FROM orders WHERE ${conditions.join(' AND ')} ORDER BY production_date DESC, created_at DESC`,
+      params
+    );
   } else {
+    // All orders
     result = await query<Order>(
       'SELECT * FROM orders WHERE tenant_id = $1 ORDER BY created_at DESC',
       [locals.tenant.id]
