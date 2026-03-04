@@ -12,13 +12,13 @@
     onImportComplete: () => void;
   } = $props();
 
-  let csvText = '';
-  let fileInput: HTMLInputElement;
-  let loading = false;
-  let preview: MatchResult[] | null = null;
-  let error = '';
-  let stats = { total: 0, matched: 0, fuzzy: 0, unmatched: 0 };
-  let groups: RoastGroup[] = [];
+  let csvText = $state('');
+  let fileInput = $state<HTMLInputElement>();
+  let loading = $state(false);
+  let preview = $state<MatchResult[] | null>(null);
+  let error = $state('');
+  let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
+  let groups = $state<RoastGroup[]>([]);
   let ignoredSkus = $state<string[]>([]);
   let addingSkus = $state<Record<string, { lbs: number; groupId: string }>>({});
 
@@ -40,9 +40,12 @@
     const suggestedLabel = skuToGroupLabel(productName);
     const suggestedGroup = groups.find(g => g.label.toLowerCase().includes(suggestedLabel.toLowerCase()));
 
-    addingSkus[productName] = {
-      lbs: lbs || 0,
-      groupId: suggestedGroup?.id || groups[0]?.id || ''
+    addingSkus = {
+      ...addingSkus,
+      [productName]: {
+        lbs: lbs || 0,
+        groupId: suggestedGroup?.id || groups[0]?.id || ''
+      }
     };
   }
 
@@ -68,7 +71,8 @@
       });
 
       // Remove from adding state
-      delete addingSkus[productName];
+      const { [productName]: _, ...rest } = addingSkus;
+      addingSkus = rest;
 
       // Re-run preview to pick up the new product
       await handlePreview();
@@ -79,11 +83,13 @@
 
   function ignoreSku(productName: string) {
     ignoredSkus = [...ignoredSkus, productName];
-    delete addingSkus[productName];
+    const { [productName]: _, ...rest } = addingSkus;
+    addingSkus = rest;
   }
 
   function cancelAddSku(productName: string) {
-    delete addingSkus[productName];
+    const { [productName]: _, ...rest } = addingSkus;
+    addingSkus = rest;
   }
 
   function handleFileSelect(e: Event) {
