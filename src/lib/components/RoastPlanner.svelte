@@ -18,6 +18,7 @@
   let dropOpen = $state(false);
   let units = $state<'lbs' | 'kg'>('lbs');
   let productionDate = $state(new Date().toISOString().slice(0, 10));
+  let previousDate = $state(productionDate);
 
   // Modal states
   let showPickList = $state(false);
@@ -28,6 +29,7 @@
   onMount(async () => {
     await loadData();
     await loadBatchOverrides();
+    previousDate = productionDate;
   });
 
   async function loadData() {
@@ -46,15 +48,20 @@
   }
 
   async function handleProductionDateChange(newDate: string) {
-    const oldDate = productionDate;
+    const oldDate = previousDate;
+
+    // Don't do anything if date hasn't actually changed
+    if (oldDate === newDate) {
+      return;
+    }
 
     // Save snapshot of current date before switching (if there are orders)
     if (orders.length > 0 && oldDate) {
       await saveSnapshot(oldDate);
     }
 
-    // Switch to new date
-    productionDate = newDate;
+    // Update tracking variable
+    previousDate = newDate;
 
     // Try to load snapshot for new date
     const snapshot = await loadSnapshot(newDate);
@@ -227,7 +234,7 @@
       </button>
       <div class="date">
         <label>Production Date</label>
-        <input type="date" bind:value={productionDate} onchange={(e) => handleProductionDateChange(e.currentTarget.value)} />
+        <input type="date" bind:value={productionDate} onchange={() => handleProductionDateChange(productionDate)} />
       </div>
     </div>
   </header>
