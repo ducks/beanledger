@@ -23,7 +23,6 @@ describe('calcGroup', () => {
   const mockGroup: RoastGroup = {
     id: 'test-group',
     label: 'Test Group',
-    tag: 'TG',
     batch_type: 'standard',
     roast_loss_pct: 15,
     type: 'single_origin',

@@ -19,7 +19,6 @@
   // Roast group form state
   let formId = $state('');
   let formLabel = $state('');
-  let formTag = $state('');
   let formBatchType = $state<BatchType>('standard');
   let formRoastLossPct = $state(0);
   let formType = $state<GroupType>('blend');
@@ -94,7 +93,6 @@
     editingGroup = null;
     formId = '';
     formLabel = '';
-    formTag = '';
     formBatchType = 'standard';
     formRoastLossPct = 0;
     formType = 'blend';
@@ -105,7 +103,6 @@
     editingGroup = group;
     formId = group.id;
     formLabel = group.label;
-    formTag = group.tag;
     formBatchType = group.batch_type;
     formRoastLossPct = group.roast_loss_pct;
     formType = group.type;
@@ -121,7 +118,6 @@
     const groupData = {
       id: formId,
       label: formLabel,
-      tag: formTag,
       batch_type: formBatchType,
       roast_loss_pct: formRoastLossPct,
       type: formType,
@@ -261,7 +257,6 @@
               <tr>
                 <th>ID</th>
                 <th>Label</th>
-                <th>Tag</th>
                 <th>Batch Type</th>
                 <th>Type</th>
                 <th>Loss %</th>
@@ -274,7 +269,6 @@
                 <tr class:inactive={!group.active}>
                   <td>{group.id}</td>
                   <td>{group.label}</td>
-                  <td>{group.tag}</td>
                   <td>{group.batch_type}</td>
                   <td>{group.type.replace('_', ' ')}</td>
                   <td>{group.roast_loss_pct}%</td>
@@ -331,15 +325,6 @@
             type="text"
             bind:value={formLabel}
             placeholder="e.g., French Roast, Dark Roast"
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Tag</label>
-          <input
-            type="text"
-            bind:value={formTag}
-            placeholder="e.g., FR, DR (short code)"
           />
         </div>
 

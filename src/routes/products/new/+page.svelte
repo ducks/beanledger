@@ -116,7 +116,7 @@
         <option value="">Select a roast group...</option>
         {#each groups as group}
           <option value={group.id}>
-            {group.tag} - {group.label}
+            {group.label}
           </option>
         {/each}
       </select>

@@ -37,7 +37,6 @@ CREATE INDEX idx_sessions_expires ON sessions(expires_at);
 CREATE TABLE roast_groups (
   id TEXT NOT NULL,
   label TEXT NOT NULL,
-  tag TEXT NOT NULL,
   batch_type TEXT NOT NULL CHECK (batch_type IN ('standard', 'dark', 'decaf')),
   roast_loss_pct REAL NOT NULL DEFAULT 0,
   type TEXT NOT NULL CHECK (type IN ('blend', 'single_origin')),

@@ -266,7 +266,6 @@
       {@const needsRoast = calc.needed > 0}
       <div class="group-card">
         <div class="group-header">
-          <span class="tag">{group.tag}</span>
           <span class="label">{group.label}</span>
         </div>
 
@@ -501,16 +500,6 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 14px;
-  }
-
-  .tag {
-    background: #b29244;
-    color: #f6f4eb;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
   }
 
   .label {

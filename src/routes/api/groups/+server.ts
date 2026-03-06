@@ -23,13 +23,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const group: RoastGroup = await request.json();
 
   const result = await query(
-    `INSERT INTO roast_groups (id, label, tag, batch_type, roast_loss_pct, type, components, active, created_at, tenant_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO roast_groups (id, label, batch_type, roast_loss_pct, type, components, active, created_at, tenant_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
     [
       group.id,
       group.label,
-      group.tag,
       group.batch_type,
       group.roast_loss_pct,
       group.type,
@@ -52,14 +51,13 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 
   const result = await query(
     `UPDATE roast_groups
-     SET label = $2, tag = $3, batch_type = $4, roast_loss_pct = $5,
-         type = $6, components = $7, active = $8, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1 AND tenant_id = $9
+     SET label = $2, batch_type = $3, roast_loss_pct = $4,
+         type = $5, components = $6, active = $7, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1 AND tenant_id = $8
      RETURNING *`,
     [
       group.id,
       group.label,
-      group.tag,
       group.batch_type,
       group.roast_loss_pct,
       group.type,

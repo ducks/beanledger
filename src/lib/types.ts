@@ -10,7 +10,6 @@ export interface Component {
 export interface RoastGroup {
   id: string;
   label: string;
-  tag: string;
   batch_type: BatchType;
   roast_loss_pct: number;
   type: GroupType;
