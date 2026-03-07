@@ -20,7 +20,7 @@
   let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
   let groups = $state<RoastGroup[]>([]);
   let ignoredSkus = $state<string[]>([]);
-  let addingSkus = $state<Record<string, { lbs: number; groupId: string }>>({});
+  let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: 'standard' | 'dark' | 'decaf'; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
 
   onMount(async () => {
     await loadGroups();
@@ -44,26 +44,75 @@
       ...addingSkus,
       [productName]: {
         lbs: lbs || 0,
-        groupId: suggestedGroup?.id || groups[0]?.id || ''
+        groupId: suggestedGroup?.id || groups[0]?.id || '',
+        creatingNewGroup: false,
+        newGroupLabel: suggestedLabel,
+        newGroupBatchType: 'standard',
+        newGroupRoastLoss: 15,
+        newGroupType: 'single_origin'
       }
     };
   }
 
   async function confirmAddSku(productName: string) {
     const formData = addingSkus[productName];
-    if (!formData || !formData.groupId) return;
-
-    const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const newProduct = {
-      id: productId,
-      name: productName,
-      lbs: formData.lbs,
-      group_id: formData.groupId,
-      active: true,
-      created_at: new Date().toISOString().slice(0, 10)
-    };
+    if (!formData) return;
 
     try {
+      let groupId = formData.groupId;
+
+      // Create new group if needed
+      if (formData.creatingNewGroup) {
+        if (!formData.newGroupLabel.trim()) {
+          error = 'Group label is required';
+          return;
+        }
+
+        const newGroupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const newGroup = {
+          id: newGroupId,
+          label: formData.newGroupLabel,
+          batch_type: formData.newGroupBatchType,
+          roast_loss_pct: formData.newGroupRoastLoss,
+          type: formData.newGroupType,
+          components: [],
+          active: true,
+          created_at: new Date().toISOString().slice(0, 10)
+        };
+
+        const groupRes = await fetch('/api/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newGroup)
+        });
+
+        if (!groupRes.ok) {
+          error = 'Failed to create group';
+          return;
+        }
+
+        groupId = newGroupId;
+
+        // Reload groups to include the new one
+        await loadGroups();
+      }
+
+      if (!groupId) {
+        error = 'Please select or create a group';
+        return;
+      }
+
+      // Create product
+      const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const newProduct = {
+        id: productId,
+        name: productName,
+        lbs: formData.lbs,
+        group_id: groupId,
+        active: true,
+        created_at: new Date().toISOString().slice(0, 10)
+      };
+
       await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,16 +317,70 @@
                     </label>
                     <label>
                       Roast Group:
-                      <select bind:value={formData.groupId} class="group-select">
+                      <select
+                        bind:value={formData.groupId}
+                        onchange={(e) => {
+                          const target = e.target as HTMLSelectElement;
+                          formData.creatingNewGroup = target.value === '__new__';
+                        }}
+                        class="group-select"
+                      >
+                        <option value="__new__">+ Create New Group</option>
                         {#each groups as group}
                           <option value={group.id}>{group.label}</option>
                         {/each}
                       </select>
                     </label>
                   </div>
+
+                  {#if formData.creatingNewGroup}
+                    <div class="new-group-form">
+                      <h5>New Group Details</h5>
+                      <div class="form-row">
+                        <label>
+                          Group Label:
+                          <input
+                            type="text"
+                            bind:value={formData.newGroupLabel}
+                            placeholder="e.g., Ethiopia Natural"
+                            class="text-input"
+                          />
+                        </label>
+                        <label>
+                          Type:
+                          <select bind:value={formData.newGroupType} class="select-input">
+                            <option value="single_origin">Single Origin</option>
+                            <option value="blend">Blend</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div class="form-row">
+                        <label>
+                          Batch Type:
+                          <select bind:value={formData.newGroupBatchType} class="select-input">
+                            <option value="standard">Standard</option>
+                            <option value="dark">Dark</option>
+                            <option value="decaf">Decaf</option>
+                          </select>
+                        </label>
+                        <label>
+                          Roast Loss %:
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            bind:value={formData.newGroupRoastLoss}
+                            class="number-input"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  {/if}
+
                   <div class="form-actions">
                     <button type="button" class="btn-confirm" onclick={() => confirmAddSku(match.productName)}>
-                      Confirm Add
+                      {formData.creatingNewGroup ? 'Create Group & Add Product' : 'Confirm Add'}
                     </button>
                     <button type="button" class="btn-cancel" onclick={() => cancelAddSku(match.productName)}>
                       Cancel
@@ -659,5 +762,30 @@
   .form-actions {
     display: flex;
     gap: 0.5rem;
+  }
+
+  .new-group-form {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .new-group-form h5 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: 600;
+  }
+
+  .text-input,
+  .select-input,
+  .number-input {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    width: 100%;
   }
 </style>
