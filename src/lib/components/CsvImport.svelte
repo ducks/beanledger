@@ -459,9 +459,9 @@
 
 <style>
   .csv-import {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 2rem;
   }
@@ -469,7 +469,7 @@
   h3 {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
-    color: #333;
+    color: #231f20;
   }
 
   .upload-section {
@@ -480,31 +480,36 @@
 
   .or-divider {
     text-align: center;
-    color: #666;
+    color: #6b7360;
     font-size: 0.9rem;
   }
 
   textarea {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
+    background: #f6f4eb;
+    color: #231f20;
     font-family: monospace;
     font-size: 0.9rem;
   }
 
   button {
     padding: 0.75rem 1rem;
-    background: #667eea;
-    color: white;
-    border: none;
+    background: #231f20;
+    color: #f6f4eb;
+    border: 1px solid #231f20;
     border-radius: 4px;
     cursor: pointer;
     font-size: 1rem;
+    font-family: var(--font-family);
+    font-weight: 600;
   }
 
   button:hover:not(:disabled) {
-    background: #5568d3;
+    background: #3a3536;
+    border-color: #3a3536;
   }
 
   button:disabled {
@@ -513,9 +518,10 @@
   }
 
   .error {
-    background: #fee;
-    color: #c33;
+    background: #f7e6e4;
+    color: #b75742;
     padding: 0.75rem;
+    border: 1px solid #d8afa7;
     border-radius: 4px;
     font-size: 0.9rem;
   }
@@ -523,7 +529,7 @@
   .preview-section {
     margin-top: 2rem;
     padding-top: 2rem;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid #c8c4a8;
   }
 
   .stats {
@@ -534,26 +540,30 @@
   }
 
   .stat {
-    background: #f5f5f5;
+    background: #ddd9c4;
     padding: 0.5rem 1rem;
     border-radius: 4px;
     display: flex;
     gap: 0.5rem;
+    border: 1px solid #c8c4a8;
   }
 
   .stat.success {
-    background: #efe;
-    color: #363;
+    background: #d4e4d0;
+    color: #3d5a3c;
+    border-color: #a8c4a2;
   }
 
   .stat.warning {
-    background: #ffe;
-    color: #663;
+    background: #f0e8d4;
+    color: #8b6914;
+    border-color: #d4c49c;
   }
 
   .stat.error {
-    background: #fee;
-    color: #c33;
+    background: #f7e6e4;
+    color: #b75742;
+    border-color: #d8afa7;
   }
 
   .stat .label {
@@ -572,24 +582,27 @@
   }
 
   th {
-    background: #f5f5f5;
+    background: #d8d4bc;
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 2px solid #ddd;
+    border-bottom: 2px solid #c8c4a8;
+    color: #231f20;
+    font-weight: 600;
   }
 
   td {
     padding: 0.75rem;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #d8d4bc;
+    color: #231f20;
   }
 
   tr.none {
-    background: #fafafa;
-    color: #999;
+    background: #f6f4eb;
+    color: #6b7360;
   }
 
   tr.fuzzy {
-    background: #fffef0;
+    background: #fcf9ec;
   }
 
   .badge {
@@ -602,18 +615,18 @@
   }
 
   .badge.success {
-    background: #efe;
-    color: #363;
+    background: #d4e4d0;
+    color: #3d5a3c;
   }
 
   .badge.warning {
-    background: #ffe;
-    color: #663;
+    background: #f0e8d4;
+    color: #8b6914;
   }
 
   .badge.error {
-    background: #fee;
-    color: #c33;
+    background: #f7e6e4;
+    color: #b75742;
   }
 
   .actions {
@@ -623,14 +636,14 @@
   }
 
   .warning-text {
-    color: #c33;
+    color: #b75742;
     margin: 0;
     flex: 1;
   }
 
   .unmatched-section {
-    background: #fff9e6;
-    border: 1px solid #e6d68a;
+    background: #f0e8d4;
+    border: 1px solid #d4c49c;
     border-radius: 4px;
     padding: 1rem;
     margin-bottom: 1rem;
@@ -639,18 +652,19 @@
   .unmatched-section h4 {
     margin: 0 0 0.5rem 0;
     font-size: 1rem;
-    color: #663;
+    color: #8b6914;
+    font-weight: 600;
   }
 
   .help-text {
     margin: 0 0 1rem 0;
     font-size: 0.85rem;
-    color: #666;
+    color: #6b7360;
   }
 
   .unmatched-product {
-    background: white;
-    border: 1px solid #ddd;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
     padding: 0.75rem;
     margin-bottom: 0.75rem;
@@ -668,11 +682,12 @@
   }
 
   .qty-badge {
-    background: #f0f0f0;
+    background: #d8d4bc;
     padding: 0.25rem 0.5rem;
     border-radius: 3px;
     font-size: 0.75rem;
     font-weight: 600;
+    color: #231f20;
   }
 
   .product-actions {
@@ -693,40 +708,47 @@
   }
 
   .btn-add {
-    background: #4caf50;
-    color: white;
+    background: #b29244;
+    color: #f6f4eb;
+    border: 1px solid #b29244;
   }
 
   .btn-add:hover {
-    background: #45a049;
+    background: #9a7d38;
+    border-color: #9a7d38;
   }
 
   .btn-ignore {
-    background: #999;
-    color: white;
+    background: #6b7360;
+    color: #f6f4eb;
+    border: 1px solid #6b7360;
   }
 
   .btn-ignore:hover {
-    background: #888;
+    background: #5a6150;
+    border-color: #5a6150;
   }
 
   .btn-confirm {
-    background: #667eea;
-    color: white;
+    background: #b29244;
+    color: #f6f4eb;
+    border: 1px solid #b29244;
   }
 
   .btn-confirm:hover {
-    background: #5568d3;
+    background: #9a7d38;
+    border-color: #9a7d38;
   }
 
   .btn-cancel {
-    background: #f5f5f5;
-    color: #333;
-    border: 1px solid #ddd;
+    background: #ddd9c4;
+    color: #231f20;
+    border: 1px solid #c8c4a8;
   }
 
   .btn-cancel:hover {
-    background: #e8e8e8;
+    background: #d8d4bc;
+    border-color: #b8b4a0;
   }
 
   .add-form {
@@ -754,9 +776,12 @@
   .weight-input,
   .group-select {
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
     font-size: 0.9rem;
+    font-family: var(--font-family);
   }
 
   .form-actions {
@@ -765,8 +790,8 @@
   }
 
   .new-group-form {
-    background: #f9f9f9;
-    border: 1px solid #ddd;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
     padding: 0.75rem;
     margin-bottom: 0.75rem;
@@ -775,7 +800,7 @@
   .new-group-form h5 {
     margin: 0 0 0.75rem 0;
     font-size: 0.9rem;
-    color: #333;
+    color: #231f20;
     font-weight: 600;
   }
 
@@ -783,9 +808,16 @@
   .select-input,
   .number-input {
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
     font-size: 0.9rem;
     width: 100%;
+    font-family: var(--font-family);
+  }
+
+  .text-input::placeholder {
+    color: #6b7360;
   }
 </style>

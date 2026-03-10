@@ -47,8 +47,8 @@
   }
 
   header {
-    background: white;
-    border-bottom: 1px solid #ddd;
+    background: #eae8d8;
+    border-bottom: 1px solid #c8c4a8;
     padding: 1rem 0;
   }
 
@@ -70,11 +70,12 @@
   h1 {
     margin: 0;
     font-size: 1.5rem;
-    color: #333;
+    color: #b29244;
+    font-weight: 700;
   }
 
   .tenant-name {
-    color: #666;
+    color: #6b7360;
     font-size: 0.9rem;
   }
 
@@ -85,21 +86,24 @@
   }
 
   .username {
-    color: #666;
+    color: #6b7360;
     font-size: 0.9rem;
   }
 
   button {
     padding: 0.5rem 1rem;
-    background: #667eea;
-    color: white;
-    border: none;
+    background: #231f20;
+    color: #f6f4eb;
+    border: 1px solid #231f20;
     border-radius: 4px;
     font-size: 0.9rem;
+    font-weight: 600;
     cursor: pointer;
+    font-family: var(--font-family);
   }
 
   button:hover {
-    background: #5568d3;
+    background: #3a3536;
+    border-color: #3a3536;
   }
 </style>

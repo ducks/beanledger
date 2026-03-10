@@ -82,27 +82,29 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #d8d4bc;
   }
 
   .login-card {
-    background: white;
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
     border-radius: 8px;
     padding: 2rem;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(35, 31, 32, 0.1);
   }
 
   h1 {
     margin: 0 0 0.5rem 0;
     font-size: 2rem;
-    color: #333;
+    color: #b29244;
+    font-weight: 700;
   }
 
   .subtitle {
     margin: 0 0 2rem 0;
-    color: #666;
+    color: #6b7360;
     font-size: 0.9rem;
   }
 
@@ -113,43 +115,48 @@
   label {
     display: block;
     margin-bottom: 0.25rem;
-    font-weight: 500;
-    color: #333;
+    font-weight: 600;
+    color: #231f20;
   }
 
   input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #ddd;
+    border: 1px solid #c8c4a8;
     border-radius: 4px;
     font-size: 1rem;
+    background: #f6f4eb;
+    color: #231f20;
+    font-family: var(--font-family);
   }
 
   input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #b29244;
   }
 
   input:disabled {
-    background: #f5f5f5;
+    background: #ddd9c4;
     cursor: not-allowed;
   }
 
   button {
     width: 100%;
     padding: 0.75rem;
-    background: #667eea;
-    color: white;
-    border: none;
+    background: #231f20;
+    color: #f6f4eb;
+    border: 1px solid #231f20;
     border-radius: 4px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     margin-top: 0.5rem;
+    font-family: var(--font-family);
   }
 
   button:hover:not(:disabled) {
-    background: #5568d3;
+    background: #3a3536;
+    border-color: #3a3536;
   }
 
   button:disabled {
@@ -158,9 +165,10 @@
   }
 
   .error {
-    background: #fee;
-    color: #c33;
+    background: #f7e6e4;
+    color: #b75742;
     padding: 0.75rem;
+    border: 1px solid #d8afa7;
     border-radius: 4px;
     margin-bottom: 1rem;
     font-size: 0.9rem;
@@ -169,12 +177,13 @@
   .signup-link {
     text-align: center;
     margin-top: 1.5rem;
-    color: #666;
+    color: #6b7360;
   }
 
   .signup-link a {
-    color: #667eea;
+    color: #b29244;
     text-decoration: none;
+    font-weight: 600;
   }
 
   .signup-link a:hover {

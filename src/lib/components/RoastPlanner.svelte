@@ -225,10 +225,10 @@
 
 <div class="planner">
   <header class="header">
-    <div class="title">
+    <a href="/" class="title">
       <h1>BeanLedger</h1>
       <p>Coffee roaster production planner</p>
-    </div>
+    </a>
     <div class="header-actions">
       <button
         class="action-button"
@@ -390,11 +390,21 @@
     margin-bottom: 30px;
   }
 
+  .title {
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .title:hover h1 {
+    opacity: 0.8;
+  }
+
   .title h1 {
     font-size: 32px;
     font-weight: 700;
     color: #b29244;
     margin: 0 0 4px 0;
+    transition: opacity 0.2s;
   }
 
   .title p {
