@@ -19,6 +19,7 @@
   let units = $state<'lbs' | 'kg'>('lbs');
   let productionDate = $state(new Date().toISOString().slice(0, 10));
   let previousDate = $state(productionDate);
+  let sortBy = $state<'type' | 'label' | 'batch_type' | 'needed'>('type');
 
   // Modal states
   let showPickList = $state(false);
@@ -165,7 +166,20 @@
     groups.map((g) => ({
       ...g,
       calc: calcGroup(g, orders, products, leftovers[g.id] ?? 0, batchOverrides)
-    }))
+    })).sort((a, b) => {
+      switch (sortBy) {
+        case 'type':
+          return a.type.localeCompare(b.type) || a.label.localeCompare(b.label);
+        case 'label':
+          return a.label.localeCompare(b.label);
+        case 'batch_type':
+          return a.batch_type.localeCompare(b.batch_type) || a.label.localeCompare(b.label);
+        case 'needed':
+          return b.calc.needed - a.calc.needed;
+        default:
+          return 0;
+      }
+    })
   );
 
   const roastNeeded = $derived(plan.filter((g) => g.calc.needed > 0));
@@ -241,15 +255,16 @@
 
   <CsvImport productionDate={productionDate} onImportComplete={loadData} />
 
-  <div class="search-bar">
-    <input
-      type="text"
-      placeholder="Search products..."
-      bind:value={search}
-      onfocus={() => (dropOpen = true)}
-    />
-    {#if dropOpen && suggestions.length > 0}
-      <div class="dropdown">
+  <div class="search-and-sort">
+    <div class="search-bar">
+      <input
+        type="text"
+        placeholder="Search products..."
+        bind:value={search}
+        onfocus={() => (dropOpen = true)}
+      />
+      {#if dropOpen && suggestions.length > 0}
+        <div class="dropdown">
         {#each suggestions as product}
           <button class="dropdown-item" onclick={() => addOrder(product)}>
             {product.name}
@@ -258,6 +273,15 @@
         {/each}
       </div>
     {/if}
+    </div>
+    <div class="sort-control">
+      <select bind:value={sortBy}>
+        <option value="type">Sort: Type</option>
+        <option value="label">Sort: Name</option>
+        <option value="batch_type">Sort: Batch Type</option>
+        <option value="needed">Sort: Amount Needed</option>
+      </select>
+    </div>
   </div>
 
   <div class="groups">
@@ -429,9 +453,32 @@
     font-size: 12px;
   }
 
+  .search-and-sort {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+
   .search-bar {
     position: relative;
-    margin-bottom: 24px;
+    flex: 1;
+  }
+
+  .sort-control {
+    min-width: 200px;
+  }
+
+  .sort-control select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #eae8d8;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 14px;
+    cursor: pointer;
   }
 
   .search-bar input {
