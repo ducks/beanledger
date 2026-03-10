@@ -261,7 +261,7 @@
   </div>
 
   <div class="groups">
-    {#each roastNeeded as group}
+    {#each plan as group}
       {@const calc = group.calc}
       {@const needsRoast = calc.needed > 0}
       <div class="group-card">
