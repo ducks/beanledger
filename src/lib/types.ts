@@ -1,4 +1,4 @@
-export type BatchType = 'standard' | 'dark' | 'decaf';
+export type BatchType = string;
 export type GroupType = 'blend' | 'single_origin';
 
 export interface Component {
@@ -50,13 +50,6 @@ export interface ProductionSummary {
   summary: any;
   saved_at: string;
 }
-
-// Default batch weights
-export const BATCH_WEIGHTS: Record<BatchType, number> = {
-  standard: 20.2,
-  dark: 19.8,
-  decaf: 10.73
-};
 
 // Auth types
 export interface Tenant {

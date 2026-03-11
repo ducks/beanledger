@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Product, RoastGroup, BatchType, GroupType } from '$lib/types';
+  import type { Product, RoastGroup, GroupType, BatchOverride } from '$lib/types';
 
   let {
     onClose,
@@ -12,6 +12,7 @@
   let tab = $state<'products' | 'groups'>('products');
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
+  let batchTypes = $state<BatchOverride[]>([]);
   let loading = $state(true);
   let showGroupForm = $state(false);
   let editingGroup = $state<RoastGroup | null>(null);
@@ -19,7 +20,7 @@
   // Roast group form state
   let formId = $state('');
   let formLabel = $state('');
-  let formBatchType = $state<BatchType>('standard');
+  let formBatchType = $state('');
   let formRoastLossPct = $state(0);
   let formType = $state<GroupType>('blend');
 
@@ -34,12 +35,19 @@
   async function loadData() {
     loading = true;
     try {
-      const [productsRes, groupsRes] = await Promise.all([
+      const [productsRes, groupsRes, batchTypesRes] = await Promise.all([
         fetch('/api/products'),
-        fetch('/api/groups')
+        fetch('/api/groups'),
+        fetch('/api/batch-overrides')
       ]);
       products = await productsRes.json();
       groups = await groupsRes.json();
+      batchTypes = await batchTypesRes.json();
+
+      // Set first batch type as default if available
+      if (batchTypes.length > 0 && !formBatchType) {
+        formBatchType = batchTypes[0].batch_type;
+      }
     } catch (err) {
       console.error('Failed to load catalog', err);
     } finally {
@@ -332,9 +340,11 @@
           <div class="form-group">
             <label>Batch Type</label>
             <select bind:value={formBatchType}>
-              <option value="standard">Standard (20.2 lb)</option>
-              <option value="dark">Dark (19.8 lb)</option>
-              <option value="decaf">Decaf (10.73 lb)</option>
+              {#each batchTypes as batchType}
+                <option value={batchType.batch_type}>
+                  {batchType.batch_type} ({batchType.weight_lbs} lb)
+                </option>
+              {/each}
             </select>
           </div>
 

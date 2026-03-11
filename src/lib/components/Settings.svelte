@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BatchOverride, BatchType } from '$lib/types';
-  import { BATCH_WEIGHTS } from '$lib/types';
+  import type { BatchOverride } from '$lib/types';
 
   let {
     units,
@@ -16,33 +15,17 @@
   } = $props();
 
   let localUnits = $state(units);
-  let batchOverrides = $state<Record<BatchType, number>>({
-    standard: BATCH_WEIGHTS.standard,
-    dark: BATCH_WEIGHTS.dark,
-    decaf: BATCH_WEIGHTS.decaf
-  });
-  let overridesLoaded = $state(false);
+  let batchTypes = $state<BatchOverride[]>([]);
+  let newBatchTypeName = $state('');
+  let newBatchTypeWeight = $state(20);
 
   onMount(async () => {
-    await loadBatchOverrides();
+    await loadBatchTypes();
   });
 
-  async function loadBatchOverrides() {
+  async function loadBatchTypes() {
     const res = await fetch('/api/batch-overrides');
-    const overrides: BatchOverride[] = await res.json();
-
-    // Start with defaults
-    batchOverrides = {
-      standard: BATCH_WEIGHTS.standard,
-      dark: BATCH_WEIGHTS.dark,
-      decaf: BATCH_WEIGHTS.decaf
-    };
-
-    // Apply any overrides
-    for (const override of overrides) {
-      batchOverrides[override.batch_type] = override.weight_lbs;
-    }
-    overridesLoaded = true;
+    batchTypes = await res.json();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -51,40 +34,44 @@
     }
   }
 
-  async function save() {
-    // Save unit preference
-    onUnitsChange(localUnits);
+  async function addBatchType() {
+    if (!newBatchTypeName.trim() || newBatchTypeWeight <= 0) return;
 
-    // Save batch overrides
-    for (const batchType of ['standard', 'dark', 'decaf'] as BatchType[]) {
-      const weight = batchOverrides[batchType];
-      const defaultWeight = BATCH_WEIGHTS[batchType];
+    await fetch('/api/batch-overrides', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        batch_type: newBatchTypeName.trim().toLowerCase(),
+        weight_lbs: newBatchTypeWeight
+      })
+    });
 
-      if (weight !== defaultWeight) {
-        // Save override
-        await fetch('/api/batch-overrides', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ batch_type: batchType, weight_lbs: weight })
-        });
-      } else {
-        // Delete override (revert to default)
-        await fetch(`/api/batch-overrides?batch_type=${batchType}`, {
-          method: 'DELETE'
-        });
-      }
-    }
-
+    newBatchTypeName = '';
+    newBatchTypeWeight = 20;
+    await loadBatchTypes();
     onBatchOverridesChange?.();
-    onClose();
   }
 
-  function resetToDefaults() {
-    batchOverrides = {
-      standard: BATCH_WEIGHTS.standard,
-      dark: BATCH_WEIGHTS.dark,
-      decaf: BATCH_WEIGHTS.decaf
-    };
+  async function deleteBatchType(batchType: string) {
+    await fetch(`/api/batch-overrides?batch_type=${batchType}`, {
+      method: 'DELETE'
+    });
+    await loadBatchTypes();
+    onBatchOverridesChange?.();
+  }
+
+  async function updateBatchType(batchType: string, weight: number) {
+    await fetch('/api/batch-overrides', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch_type: batchType, weight_lbs: weight })
+    });
+    onBatchOverridesChange?.();
+  }
+
+  function save() {
+    onUnitsChange(localUnits);
+    onClose();
   }
 </script>
 
@@ -111,44 +98,47 @@
       </div>
 
       <div class="setting-section">
-        <div class="setting-header">
-          <div class="setting-label">Batch Sizes (lbs)</div>
-          <button class="reset-button" onclick={resetToDefaults}>Reset to Defaults</button>
+        <div class="setting-label">Batch Types</div>
+
+        <div class="batch-types-list">
+          {#each batchTypes as batchType}
+            <div class="batch-row">
+              <span class="batch-name">{batchType.batch_type}</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={batchType.weight_lbs}
+                onchange={(e) => updateBatchType(batchType.batch_type, parseFloat(e.currentTarget.value))}
+                class="batch-input"
+              />
+              <span class="batch-unit">lbs</span>
+              <button
+                class="delete-button"
+                onclick={() => deleteBatchType(batchType.batch_type)}
+                title="Delete batch type"
+              >×</button>
+            </div>
+          {/each}
         </div>
-        <div class="batch-info">
-          <div class="batch-row">
-            <span class="batch-name">Standard</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              bind:value={batchOverrides.standard}
-              class="batch-input"
-            />
-          </div>
-          <div class="batch-row">
-            <span class="batch-name">Dark</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              bind:value={batchOverrides.dark}
-              class="batch-input"
-            />
-          </div>
-          <div class="batch-row">
-            <span class="batch-name">Decaf</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              bind:value={batchOverrides.decaf}
-              class="batch-input"
-            />
-          </div>
-        </div>
-        <div class="note">
-          Defaults: Standard {BATCH_WEIGHTS.standard} lb, Dark {BATCH_WEIGHTS.dark} lb, Decaf {BATCH_WEIGHTS.decaf} lb
+
+        <div class="add-batch-type">
+          <input
+            type="text"
+            bind:value={newBatchTypeName}
+            placeholder="New batch type (e.g., light)"
+            class="batch-name-input"
+          />
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            bind:value={newBatchTypeWeight}
+            placeholder="Weight"
+            class="batch-weight-input"
+          />
+          <span class="batch-unit">lbs</span>
+          <button class="add-button" onclick={addBatchType}>Add</button>
         </div>
       </div>
 
@@ -272,15 +262,34 @@
     padding: 12px;
   }
 
+  .batch-types-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
   .batch-row {
     display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
     font-size: 12px;
   }
 
   .batch-name {
+    flex: 1;
+    color: #231f20;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  .batch-unit {
     color: #6b7360;
+    font-size: 11px;
   }
 
   .batch-value {
@@ -304,6 +313,79 @@
   .batch-input:focus {
     outline: none;
     border-color: #b29244;
+  }
+
+  .delete-button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: #b75742;
+    color: #f6f4eb;
+    border: none;
+    border-radius: 3px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .delete-button:hover {
+    background: #a34a38;
+  }
+
+  .add-batch-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #d8d4bc;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+  }
+
+  .batch-name-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #f6f4eb;
+    color: #231f20;
+    font-size: 12px;
+    font-family: var(--font-family);
+  }
+
+  .batch-weight-input {
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    background: #f6f4eb;
+    color: #231f20;
+    font-size: 12px;
+    font-family: var(--font-family);
+    text-align: right;
+  }
+
+  .batch-name-input:focus,
+  .batch-weight-input:focus {
+    outline: none;
+    border-color: #b29244;
+  }
+
+  .add-button {
+    padding: 6px 14px;
+    background: #b29244;
+    color: #f6f4eb;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .add-button:hover {
+    background: #9a7d38;
   }
 
   .note {

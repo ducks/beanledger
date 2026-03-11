@@ -1,5 +1,4 @@
 import type { RoastGroup, Product, Order } from './types';
-import { BATCH_WEIGHTS } from './types';
 
 export interface GroupCalc {
   totalLbs: number;
@@ -27,8 +26,8 @@ export function calcGroup(
   leftover: number,
   batchOverrides: Record<string, number> = {}
 ): GroupCalc {
-  const baseWeight = BATCH_WEIGHTS[group.batch_type] ?? 20.2;
-  const batchWeight = batchOverrides[group.batch_type] ?? baseWeight;
+  // Use batch override weight if available, otherwise default to 20
+  const batchWeight = batchOverrides[group.batch_type] ?? 20;
   const roastLossPct = group.roast_loss_pct ?? 0;
   const roastFactor = Math.max(0.001, 1 - roastLossPct / 100);
 
