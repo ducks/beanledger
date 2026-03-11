@@ -322,13 +322,10 @@
         {#if needsRoast}
           <div class="batches">
             <div class="batch-info">
-              <div class="batch-label">
-                Batches <span class="batch-weight">({formatWeight(calc.batchWeight, units)} green/batch)</span>
-              </div>
-              <div class="batch-precise">{calc.batches.toFixed(4)}</div>
+              <!-- Empty space to keep batches aligned right -->
             </div>
             <div class="batch-rounded">
-              <div class="batch-label">Round Up</div>
+              <div class="batch-label">Batches</div>
               <div class="batch-up">{calc.batchesUp}</div>
             </div>
           </div>
