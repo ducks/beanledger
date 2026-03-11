@@ -14,7 +14,9 @@
   <header>
     <div class="container">
       <div class="brand">
-        <h1>BeanLedger</h1>
+        <a href="/">
+          <img src="/images/bean-ledger-logo.png" alt="BeanLedger" class="logo" />
+        </a>
         {#if data.tenant}
           <span class="tenant-name">{data.tenant.name}</span>
         {/if}
@@ -63,15 +65,23 @@
 
   .brand {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 1rem;
   }
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: #b29244;
-    font-weight: 700;
+  .brand a {
+    display: block;
+    line-height: 0;
+  }
+
+  .logo {
+    height: 50px;
+    width: auto;
+    transition: opacity 0.2s;
+  }
+
+  .brand a:hover .logo {
+    opacity: 0.8;
   }
 
   .tenant-name {
