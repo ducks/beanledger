@@ -115,7 +115,7 @@
   .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
   .section { margin-bottom: 24px; page-break-inside: avoid; }
   .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #b29244; margin-bottom: 12px; font-weight: 700; }
-  .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
   .size-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
   .size-label { font-size: 9px; color: #666; text-transform: uppercase; }
   .size-qty { font-size: 18px; font-weight: 700; margin-top: 2px; }
@@ -130,8 +130,23 @@
   .footer-label { font-size: 10px; color: #666; }
   .footer-value { font-size: 16px; font-weight: 700; }
   @media print {
-    body { padding: 10px; }
-    .section { page-break-inside: avoid; }
+    @page { margin: 0.5in; }
+    body { padding: 0; }
+    .section { margin-bottom: 16px; page-break-inside: avoid; }
+    .section:first-of-type { margin-bottom: 12px; }
+    .section-title { color: #000; }
+    .size-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .size-box { border-color: #333; }
+    .size-label { color: #000; }
+    .subtitle { color: #000; }
+    .item { border-bottom-color: #ccc; }
+    .item-weight { color: #000; }
+    .checkbox { border-color: #333; }
+    .footer { border-top-color: #333; margin-top: 12px; }
+    .footer-label { color: #000; }
+    .group-title { border-bottom-color: #333; page-break-after: avoid; }
+    .group-total { color: #000; }
+    div[style*="margin-bottom"] { margin-bottom: 12px !important; page-break-inside: avoid; }
   }
 </style>
 </head>
@@ -139,7 +154,7 @@
 <h1>Pick List</h1>
 <div class="subtitle">${formatDate(productionDate)}</div>
 
-<div class="section">
+<div class="section section-summary">
   <div class="section-title">Package Size Summary</div>
   <div class="size-grid">
 ${pickList.bySizeAll.map((s) => `    <div class="size-box">
@@ -149,9 +164,9 @@ ${pickList.bySizeAll.map((s) => `    <div class="size-box">
   </div>
 </div>
 
-<div class="section">
+<div class="section section-items">
   <div class="section-title">All Items by Roast Group</div>
-${pickList.byGroup.map((g) => `  <div style="margin-bottom: 20px;">
+${pickList.byGroup.map((g) => `  <div class="roast-group" style="margin-bottom: 12px;">
     <div class="group-title">${g.label}</div>
 ${g.items
   .sort((a, b) => {
