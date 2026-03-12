@@ -26,6 +26,11 @@
   onMount(async () => {
     await loadGroups();
     await loadBatchTypes();
+
+    // Warn if no batch types exist
+    if (batchTypes.length === 0) {
+      console.warn('No batch types found. Users must create batch types in Settings before creating groups.');
+    }
   });
 
   async function loadGroups() {
@@ -63,7 +68,13 @@
 
   async function confirmAddSku(productName: string) {
     const formData = addingSkus[productName];
-    if (!formData) return;
+    if (!formData) {
+      console.error('No form data for product:', productName);
+      return;
+    }
+
+    // Clear previous errors
+    error = '';
 
     try {
       let groupId = formData.groupId;
@@ -72,6 +83,11 @@
       if (formData.creatingNewGroup) {
         if (!formData.newGroupLabel.trim()) {
           error = 'Group label is required';
+          return;
+        }
+
+        if (!formData.newGroupBatchType) {
+          error = 'Batch type is required. Please create batch types in Settings first.';
           return;
         }
 
@@ -87,6 +103,8 @@
           created_at: new Date().toISOString().slice(0, 10)
         };
 
+        console.log('Creating group:', newGroup);
+
         const groupRes = await fetch('/api/groups', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -94,7 +112,9 @@
         });
 
         if (!groupRes.ok) {
-          error = 'Failed to create group';
+          const errorText = await groupRes.text();
+          error = `Failed to create group: ${errorText}`;
+          console.error('Group creation failed:', errorText);
           return;
         }
 
