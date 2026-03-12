@@ -9,6 +9,7 @@ export interface GroupCalc {
   batchWeight: number;
   roastFactor: number;
   roastLossPct: number;
+  predictedLeftover: number;
   items: Array<{
     id: string;
     name: string;
@@ -45,16 +46,22 @@ export function calcGroup(
   const neededRoasted = Math.max(0, totalLbs - leftover);
   const neededGreen = roastLossPct > 0 ? neededRoasted / roastFactor : neededRoasted;
   const batches = trunc4(neededGreen / batchWeight);
+  const batchesUp = Math.ceil(batches);
+
+  // Calculate predicted leftover: roasted output from batches - amount needed
+  const roastedOutput = batchesUp * batchWeight * roastFactor;
+  const predictedLeftover = Math.max(0, roastedOutput - neededRoasted);
 
   return {
     totalLbs,
     needed: neededGreen,
     neededRoasted,
     batches,
-    batchesUp: Math.ceil(batches),
+    batchesUp,
     batchWeight,
     roastFactor,
     roastLossPct,
+    predictedLeftover,
     items
   };
 }

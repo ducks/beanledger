@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
-  import type { RoastGroup } from '$lib/types';
+  import type { RoastGroup, BatchOverride } from '$lib/types';
 
   let {
     productionDate,
@@ -19,16 +19,23 @@
   let error = $state('');
   let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
   let groups = $state<RoastGroup[]>([]);
+  let batchTypes = $state<BatchOverride[]>([]);
   let ignoredSkus = $state<string[]>([]);
-  let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: 'standard' | 'dark' | 'decaf'; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
+  let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: string; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
 
   onMount(async () => {
     await loadGroups();
+    await loadBatchTypes();
   });
 
   async function loadGroups() {
     const res = await fetch('/api/groups');
     groups = await res.json();
+  }
+
+  async function loadBatchTypes() {
+    const res = await fetch('/api/batch-overrides');
+    batchTypes = await res.json();
   }
 
   const unmatchedProducts = $derived(
@@ -47,7 +54,7 @@
         groupId: suggestedGroup?.id || groups[0]?.id || '',
         creatingNewGroup: false,
         newGroupLabel: suggestedLabel,
-        newGroupBatchType: 'standard',
+        newGroupBatchType: batchTypes[0]?.batch_type || '',
         newGroupRoastLoss: 15,
         newGroupType: 'single_origin'
       }
@@ -113,11 +120,16 @@
         created_at: new Date().toISOString().slice(0, 10)
       };
 
-      await fetch('/api/products', {
+      const productRes = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProduct)
       });
+
+      if (!productRes.ok) {
+        error = `Failed to create product: ${await productRes.text()}`;
+        return;
+      }
 
       // Remove from adding state
       const { [productName]: _, ...rest } = addingSkus;
@@ -126,7 +138,8 @@
       // Re-run preview to pick up the new product
       await handlePreview();
     } catch (err) {
-      error = 'Failed to create product';
+      error = `Failed to create product: ${err instanceof Error ? err.message : String(err)}`;
+      console.error('Error creating product:', err);
     }
   }
 
@@ -358,9 +371,11 @@
                         <label>
                           Batch Type:
                           <select bind:value={formData.newGroupBatchType} class="select-input">
-                            <option value="standard">Standard</option>
-                            <option value="dark">Dark</option>
-                            <option value="decaf">Decaf</option>
+                            {#each batchTypes as batchType}
+                              <option value={batchType.batch_type}>
+                                {batchType.batch_type} ({batchType.weight_lbs} lb)
+                              </option>
+                            {/each}
                           </select>
                         </label>
                         <label>

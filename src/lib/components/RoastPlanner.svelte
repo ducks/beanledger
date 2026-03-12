@@ -322,7 +322,8 @@
         {#if needsRoast}
           <div class="batches">
             <div class="batch-info">
-              <!-- Empty space to keep batches aligned right -->
+              <div class="batch-label">Predicted Leftover</div>
+              <div class="batch-precise">{formatWeight(calc.predictedLeftover, units)}</div>
             </div>
             <div class="batch-rounded">
               <div class="batch-label">Batches</div>
