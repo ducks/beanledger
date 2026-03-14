@@ -41,6 +41,7 @@ jobs:
           mkdir -p release
           cp -r build release/
           cp -r node_modules release/
+          cp -r migrations release/
           cp package.json release/
           cp schema.sql release/
           cp seed.sql release/
