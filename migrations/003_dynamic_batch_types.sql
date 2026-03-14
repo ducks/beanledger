@@ -11,8 +11,24 @@ ALTER TABLE batch_overrides DROP CONSTRAINT IF EXISTS batch_overrides_batch_type
 -- Drop the old primary key
 ALTER TABLE batch_overrides DROP CONSTRAINT IF EXISTS batch_overrides_pkey;
 
--- Make batch_type + tenant_id the composite primary key
-ALTER TABLE batch_overrides ADD PRIMARY KEY (batch_type, tenant_id);
+-- Make batch_type + tenant_id the composite primary key (only if not exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'batch_overrides_pkey' AND conrelid = 'batch_overrides'::regclass
+  ) THEN
+    ALTER TABLE batch_overrides ADD PRIMARY KEY (batch_type, tenant_id);
+  END IF;
+END $$;
 
 -- Make tenant_id NOT NULL (it might have been nullable before)
-ALTER TABLE batch_overrides ALTER COLUMN tenant_id SET NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'batch_overrides' AND column_name = 'tenant_id' AND is_nullable = 'YES'
+  ) THEN
+    ALTER TABLE batch_overrides ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
+END $$;

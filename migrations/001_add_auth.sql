@@ -2,14 +2,14 @@
 -- Adds tenants and users tables, tenant_id to all data tables
 
 -- Tenants (roaster companies)
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Users (belong to tenants)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
@@ -18,25 +18,25 @@ CREATE TABLE users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_tenant ON users(tenant_id);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Add tenant_id to existing tables
-ALTER TABLE roast_groups ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
-ALTER TABLE products ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
-ALTER TABLE orders ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
-ALTER TABLE leftovers ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
-ALTER TABLE batch_overrides ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
-ALTER TABLE production_summaries ADD COLUMN tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE roast_groups ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE leftovers ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE batch_overrides ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
+ALTER TABLE production_summaries ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE;
 
 -- Create indexes for tenant filtering (performance)
-CREATE INDEX idx_roast_groups_tenant ON roast_groups(tenant_id);
-CREATE INDEX idx_products_tenant ON products(tenant_id);
-CREATE INDEX idx_orders_tenant ON orders(tenant_id);
-CREATE INDEX idx_leftovers_tenant ON leftovers(tenant_id);
-CREATE INDEX idx_batch_overrides_tenant ON batch_overrides(tenant_id);
-CREATE INDEX idx_production_summaries_tenant ON production_summaries(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_roast_groups_tenant ON roast_groups(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_orders_tenant ON orders(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_leftovers_tenant ON leftovers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_batch_overrides_tenant ON batch_overrides(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_production_summaries_tenant ON production_summaries(tenant_id);
 
 -- Migration for existing data:
 -- Create a default tenant for existing data
@@ -68,19 +68,46 @@ BEGIN
 END $$;
 
 -- Make tenant_id NOT NULL now that existing data is migrated
-ALTER TABLE roast_groups ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE products ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE orders ALTER COLUMN tenant_id SET NOT NULL;
-ALTER TABLE leftovers ALTER COLUMN tenant_id SET NOT NULL;
+DO $$
+BEGIN
+  -- Only set NOT NULL if column exists and isn't already NOT NULL
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'roast_groups' AND column_name = 'tenant_id' AND is_nullable = 'YES'
+  ) THEN
+    ALTER TABLE roast_groups ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'products' AND column_name = 'tenant_id' AND is_nullable = 'YES'
+  ) THEN
+    ALTER TABLE products ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'orders' AND column_name = 'tenant_id' AND is_nullable = 'YES'
+  ) THEN
+    ALTER TABLE orders ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'leftovers' AND column_name = 'tenant_id' AND is_nullable = 'YES'
+  ) THEN
+    ALTER TABLE leftovers ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
+END $$;
 -- batch_overrides and production_summaries can stay nullable for now
 
 -- Sessions table for authentication
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_sessions_user ON sessions(user_id);
-CREATE INDEX idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
