@@ -252,7 +252,10 @@
         return;
       }
 
-      alert(`Successfully imported ${data.created} orders!`);
+      const message = data.updated > 0
+        ? `Successfully created ${data.created} new order(s) and updated ${data.updated} existing order(s)!`
+        : `Successfully imported ${data.created} order(s)!`;
+      alert(message);
       csvText = '';
       preview = null;
       onImportComplete();
