@@ -221,6 +221,58 @@
       body: JSON.stringify({ group_id: groupId, lbs: value })
     });
   }
+
+  async function resetOrders() {
+    if (!confirm('Reset to saved snapshot? This will restore orders and leftovers from the last saved state.')) {
+      return;
+    }
+
+    try {
+      // Load the snapshot for the current date
+      const snapshot = await loadSnapshot(productionDate);
+
+      if (!snapshot) {
+        alert('No snapshot found to restore from.');
+        return;
+      }
+
+      // Delete current orders
+      const res = await fetch(`/api/orders?date=${productionDate}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        alert('Failed to reset orders');
+        return;
+      }
+
+      // Restore from snapshot
+      await restoreFromSnapshot(snapshot);
+
+      // Save the restored orders back to database
+      for (const order of orders) {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(order)
+        });
+      }
+
+      // Save restored leftovers back to database
+      for (const [groupId, lbs] of Object.entries(leftovers)) {
+        await fetch('/api/leftovers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ group_id: groupId, lbs })
+        });
+      }
+
+      alert('Successfully restored from snapshot!');
+    } catch (err) {
+      alert('Failed to reset orders');
+      console.error('Reset failed:', err);
+    }
+  }
 </script>
 
 <div class="planner">
@@ -245,6 +297,13 @@
       </button>
       <button class="action-button" onclick={() => showSettings = true}>
         ⚙ Settings
+      </button>
+      <button
+        class="action-button reset-button"
+        disabled={orders.length === 0}
+        onclick={resetOrders}
+      >
+        ↺ Reset Orders
       </button>
       <div class="date">
         <label>Production Date</label>
@@ -440,6 +499,16 @@
     border-color: #c8c4a8;
     color: #6b7360;
     cursor: not-allowed;
+  }
+
+  .reset-button:not(:disabled) {
+    background: #b75742;
+    border-color: #b75742;
+  }
+
+  .reset-button:hover:not(:disabled) {
+    background: #a3493a;
+    border-color: #a3493a;
   }
 
   .date label {

@@ -89,10 +89,17 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
   }
 
   const id = url.searchParams.get('id');
-  if (!id) {
-    return json({ error: 'Missing id' }, { status: 400 });
-  }
+  const date = url.searchParams.get('date');
 
-  await query('DELETE FROM orders WHERE id = $1 AND tenant_id = $2', [id, locals.tenant.id]);
-  return json({ success: true });
+  if (date) {
+    // Delete all orders for a specific date
+    await query('DELETE FROM orders WHERE production_date = $1 AND tenant_id = $2', [date, locals.tenant.id]);
+    return json({ success: true });
+  } else if (id) {
+    // Delete single order
+    await query('DELETE FROM orders WHERE id = $1 AND tenant_id = $2', [id, locals.tenant.id]);
+    return json({ success: true });
+  } else {
+    return json({ error: 'Missing id or date' }, { status: 400 });
+  }
 };
