@@ -13,6 +13,7 @@
   } = $props();
 
   let csvText = $state('');
+  let filename = $state<string>('');
   let fileInput = $state<HTMLInputElement>();
   let loading = $state(false);
   let preview = $state<MatchResult[] | null>(null);
@@ -179,6 +180,7 @@
     const file = target.files?.[0];
     if (!file) return;
 
+    filename = file.name;
     const reader = new FileReader();
     reader.onload = (e) => {
       csvText = e.target?.result as string;
@@ -241,6 +243,7 @@
         body: JSON.stringify({
           csvText,
           productionDate,
+          filename: filename || 'pasted.csv',
           confirm: true
         })
       });
@@ -252,11 +255,9 @@
         return;
       }
 
-      const message = data.updated > 0
-        ? `Successfully created ${data.created} new order(s) and updated ${data.updated} existing order(s)!`
-        : `Successfully imported ${data.created} order(s)!`;
-      alert(message);
+      alert(`Successfully imported ${data.created} order(s)!`);
       csvText = '';
+      filename = '';
       preview = null;
       onImportComplete();
     } catch (err) {
