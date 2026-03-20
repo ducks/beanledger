@@ -44,7 +44,6 @@ jobs:
           cp -r migrations release/
           cp package.json release/
           cp schema.sql release/
-          cp seed.sql release/
           cd release
           tar -czf ../beanledger.tar.gz .
           cd ..
