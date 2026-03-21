@@ -254,7 +254,12 @@
       </button>
       <div class="date">
         <label>Production Date</label>
-        <input type="date" bind:value={productionDate} onchange={() => handleProductionDateChange(productionDate)} />
+        <input
+          type="date"
+          bind:value={productionDate}
+          max={new Date().toISOString().slice(0, 10)}
+          onchange={() => handleProductionDateChange(productionDate)}
+        />
       </div>
     </div>
   </header>
