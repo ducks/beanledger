@@ -26,6 +26,8 @@
   });
 
   $effect(() => {
+    // Reload imports when productionDate changes
+    productionDate;
     loadImports();
   });
 
@@ -38,6 +40,11 @@
       console.error('Failed to load imports:', err);
       error = 'Failed to load import history';
     }
+  }
+
+  // Export public method for parent to call
+  export function refresh() {
+    loadImports();
   }
 
   async function handleDelete(importId: string, filename: string) {

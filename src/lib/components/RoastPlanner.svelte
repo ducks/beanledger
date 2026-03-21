@@ -21,6 +21,7 @@
   let productionDate = $state(new Date().toISOString().slice(0, 10));
   let previousDate = $state(productionDate);
   let sortBy = $state<'type' | 'label' | 'batch_type' | 'needed'>('type');
+  let importHistory: any;
 
   // Modal states
   let showPickList = $state(false);
@@ -47,6 +48,9 @@
     orders = await ordersRes.json();
     const leftoversData = await leftoversRes.json();
     leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
+
+    // Also refresh import history
+    importHistory?.refresh();
   }
 
   async function handleProductionDateChange(newDate: string) {
@@ -256,7 +260,7 @@
   </header>
 
   <CsvImport productionDate={productionDate} onImportComplete={loadData} />
-  <ImportHistory productionDate={productionDate} onDelete={loadData} />
+  <ImportHistory bind:this={importHistory} productionDate={productionDate} onDelete={loadData} />
 
   <div class="search-and-sort">
     <div class="search-bar">
