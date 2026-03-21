@@ -78,6 +78,12 @@ pnpm test:ui           # Interactive UI
 
 ## Recent Updates
 
+### 2026-03-21
+- ✅ **CSV Import Tracking** - Track imported orders separately from manual entries
+  - Import history shows filename, timestamp, and order count
+  - Delete individual imports to undo mistakes without affecting manual orders
+  - Production date picker restricted to today or earlier
+
 ### 2026-03-01
 - ✅ **Roast Group CRUD UI** - Create, edit, delete roast groups via Catalog modal
 - ✅ **Product Edit UI** - Edit product name, weight, and roast group assignment
@@ -86,6 +92,7 @@ pnpm test:ui           # Interactive UI
 ## TODO
 
 ### Core Features
+- [x] CSV import tracking and selective deletion
 - [ ] Batch size overrides per tenant
 - [ ] Production date history/archive
 - [ ] Edit/delete orders UI
@@ -106,7 +113,7 @@ pnpm test:ui           # Interactive UI
 - [ ] Invite team members
 
 ### Technical
-- [ ] Migration scripts for schema changes
+- [x] Migration scripts for schema changes
 - [ ] Database backup/restore
 - [ ] Error monitoring
 - [ ] Performance optimization for large catalogs
