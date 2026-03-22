@@ -32,9 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        env:
-          DATABASE_URL: postgresql://placeholder
-        run: pnpm build
+        run: pnpm build:ci
 
       - name: Create release archive
         run: |
