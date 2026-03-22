@@ -8,6 +8,9 @@ interface ProductionSnapshot {
   summary: {
     orders: Array<{ product_name: string; qty: number }>;
     leftovers: Record<string, number>;
+    groups?: any[];
+    products?: any[];
+    batchOverrides?: Record<string, number>;
     notes?: string;
   };
   saved_at: string;
@@ -51,14 +54,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { production_date, orders, leftovers, notes } = await request.json();
+  const { production_date, orders, leftovers, groups, products, batchOverrides, notes } = await request.json();
 
   if (!production_date) {
     return json({ error: 'production_date is required' }, { status: 400 });
   }
 
   const snapshotId = `snap_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  const summary = { orders, leftovers, notes };
+  const summary = { orders, leftovers, groups, products, batchOverrides, notes };
 
   // Upsert: delete existing snapshot for this date, then insert new one
   await query(

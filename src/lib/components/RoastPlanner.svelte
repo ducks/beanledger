@@ -9,6 +9,12 @@
   import Catalog from './Catalog.svelte';
   import Settings from './Settings.svelte';
 
+  interface Props {
+    initialDate?: string;
+  }
+
+  let { initialDate = new Date().toISOString().slice(0, 10) }: Props = $props();
+
   let groups = $state<RoastGroup[]>([]);
   let products = $state<Product[]>([]);
   let orders = $state<Order[]>([]);
@@ -18,10 +24,11 @@
   let qty = $state(1);
   let dropOpen = $state(false);
   let units = $state<'lbs' | 'kg'>('lbs');
-  let productionDate = $state(new Date().toISOString().slice(0, 10));
+  let productionDate = $state(initialDate);
   let previousDate = $state(productionDate);
   let sortBy = $state<'type' | 'label' | 'batch_type' | 'needed'>('type');
   let importHistory: any;
+  let dayStatus = $state<'active' | 'scheduled' | 'completed' | null>(null);
 
   // Modal states
   let showPickList = $state(false);
@@ -32,23 +39,34 @@
   onMount(async () => {
     await loadData();
     await loadBatchOverrides();
+    await loadProductionDayStatus();
     previousDate = productionDate;
   });
 
   async function loadData() {
+    console.log('[FRONTEND] loadData called for date:', productionDate);
     const [groupsRes, productsRes, ordersRes, leftoversRes] = await Promise.all([
       fetch('/api/groups'),
       fetch('/api/products'),
       fetch(`/api/orders?date=${productionDate}`),
-      fetch('/api/leftovers')
+      fetch(`/api/leftovers?date=${productionDate}`)
     ]);
 
+    console.log('[FRONTEND] Leftovers response status:', leftoversRes.status);
     groups = await groupsRes.json();
     products = await productsRes.json();
     orders = await ordersRes.json();
     const leftoversData = await leftoversRes.json();
-    leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
 
+    console.log('[FRONTEND] Leftovers data received:', leftoversData);
+    // Ensure leftoversData is an array before reducing
+    if (Array.isArray(leftoversData)) {
+      leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
+    } else {
+      leftovers = {};
+    }
+
+    console.log('[FRONTEND] Processed leftovers object:', leftovers);
     // Also refresh import history
     importHistory?.refresh();
   }
@@ -79,6 +97,70 @@
       // No snapshot - load fresh data for this date
       await loadData();
     }
+
+    // Load production day status
+    await loadProductionDayStatus();
+  }
+
+  async function loadProductionDayStatus() {
+    try {
+      const res = await fetch('/api/production-days');
+      const data = await res.json();
+      const currentDay = data.days?.find((d: any) => d.production_date === productionDate);
+      dayStatus = currentDay?.status || null;
+    } catch (err) {
+      console.error('Failed to load production day status:', err);
+      dayStatus = null;
+    }
+  }
+
+  async function markAsActive() {
+    try {
+      const res = await fetch(`/api/production-days/${productionDate}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' })
+      });
+
+      if (res.ok) {
+        await loadProductionDayStatus();
+      } else {
+        const data = await res.json();
+        if (res.status === 409) {
+          alert(`Cannot mark as active: ${data.error}`);
+        } else {
+          alert(data.error || 'Failed to mark day as active');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to mark day as active:', err);
+      alert('Network error while updating roast day');
+    }
+  }
+
+  async function finishRoastDay() {
+    if (!confirm('Mark this roast day as complete? You will no longer be able to edit it.')) return;
+
+    try {
+      // Save snapshot with complete data before marking as complete
+      await saveSnapshot(productionDate);
+
+      const res = await fetch(`/api/production-days/${productionDate}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      });
+
+      if (res.ok) {
+        await loadProductionDayStatus();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to finish roast day');
+      }
+    } catch (err) {
+      console.error('Failed to finish roast day:', err);
+      alert('Network error while finishing roast day');
+    }
   }
 
   async function saveSnapshot(date: string) {
@@ -95,7 +177,10 @@
         body: JSON.stringify({
           production_date: date,
           orders: orderData,
-          leftovers
+          leftovers,
+          groups,
+          products,
+          batchOverrides
         })
       });
     } catch (err) {
@@ -227,6 +312,12 @@
     });
   }
 
+  function formatProductionDate(dateStr: string) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
 </script>
 
 <div class="planner">
@@ -252,14 +343,24 @@
       <button class="action-button" onclick={() => showSettings = true}>
         ⚙ Settings
       </button>
-      <div class="date">
-        <label>Production Date</label>
-        <input
-          type="date"
-          bind:value={productionDate}
-          max={new Date().toISOString().slice(0, 10)}
-          onchange={() => handleProductionDateChange(productionDate)}
-        />
+      {#if dayStatus === 'scheduled'}
+        <button class="active-button" onclick={markAsActive}>
+          🟢 Mark as Active
+        </button>
+      {/if}
+      {#if dayStatus === 'active' || dayStatus === 'scheduled'}
+        <button class="finish-button" onclick={finishRoastDay}>
+          ✓ Finish Roast Day
+        </button>
+      {/if}
+      <div class="date-display">
+        <span class="date-text">{formatProductionDate(productionDate)}</span>
+        {#if dayStatus}
+          <span class="status-badge status-{dayStatus}">
+            {#if dayStatus === 'active'}🟢{:else if dayStatus === 'scheduled'}📅{:else}✅{/if}
+            {dayStatus.charAt(0).toUpperCase() + dayStatus.slice(1)}
+          </span>
+        {/if}
       </div>
     </div>
   </header>
@@ -455,23 +556,61 @@
   }
 
 
-  .date label {
-    display: block;
-    font-size: 10px;
-    color: #6b7360;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 6px;
+  .date-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 
-  .date input {
-    padding: 6px 10px;
-    border: 1px solid #c8c4a8;
-    border-radius: 4px;
-    background: #eae8d8;
+  .date-text {
+    font-size: 14px;
+    font-weight: 600;
     color: #231f20;
+  }
+
+  .active-button,
+  .finish-button {
+    padding: 5px 14px;
+    background: #6b7360;
+    border: 1px solid #6b7360;
+    border-radius: 5px;
+    color: #f6f4eb;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
     font-family: var(--font-family);
-    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .active-button:hover,
+  .finish-button:hover {
+    background: #5a6250;
+    border-color: #5a6250;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .status-active {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .status-scheduled {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .status-completed {
+    background: #e2e3e5;
+    color: #383d41;
   }
 
   .search-and-sort {

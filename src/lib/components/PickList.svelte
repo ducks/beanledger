@@ -60,17 +60,25 @@
       sizeEntry.qty += order.qty;
       sizeEntry.totalLbs += product.lbs * order.qty;
 
-      // Track by group
+      // Track by group and product (deduplicate by product_id)
       if (!groupMap.has(group.id)) {
         groupMap.set(group.id, { id: group.id, label: group.label, items: [] });
       }
       const groupEntry = groupMap.get(group.id)!;
-      groupEntry.items.push({
-        name: product.name,
-        qty: order.qty,
-        lbs: product.lbs,
-        totalLbs: product.lbs * order.qty
-      });
+
+      // Find existing item or create new one
+      const existingItem = groupEntry.items.find(item => item.name === product.name);
+      if (existingItem) {
+        existingItem.qty += order.qty;
+        existingItem.totalLbs += product.lbs * order.qty;
+      } else {
+        groupEntry.items.push({
+          name: product.name,
+          qty: order.qty,
+          lbs: product.lbs,
+          totalLbs: product.lbs * order.qty
+        });
+      }
     }
 
     // Sort sizes by weight
