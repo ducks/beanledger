@@ -35,8 +35,8 @@ version-bump:
 	@echo "Creating release branch for version $(VERSION)..."
 	@git checkout -b release/$(VERSION)
 	@echo "Bumping version to $(VERSION)..."
-	@pnpm version $(VERSION) --no-git-tag-version
-	@git add package.json pnpm-lock.yaml
+	@sed -i 's/"version": ".*"/"version": "$(VERSION)"/' package.json
+	@git add package.json
 	@git commit -m "chore: bump version to $(VERSION)"
 	@echo ""
 	@echo "Created branch release/$(VERSION)"
