@@ -1,13 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { query } from '$lib/db';
 import type { User, Tenant } from '$lib/types';
-import { runMigrations } from '$lib/migrate';
-
-// Run migrations on startup
-runMigrations().catch(err => {
-  console.error('Failed to run migrations:', err);
-  process.exit(1);
-});
 
 export const handle: Handle = async ({ event, resolve }) => {
   // Initialize locals

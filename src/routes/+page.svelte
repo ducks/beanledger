@@ -1,5 +1,5 @@
 <script lang="ts">
-  import RoastPlanner from '$lib/components/RoastPlanner.svelte';
+  import Dashboard from '$lib/components/Dashboard.svelte';
 </script>
 
-<RoastPlanner />
+<Dashboard />
