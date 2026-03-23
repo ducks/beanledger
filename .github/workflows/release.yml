@@ -40,6 +40,7 @@ jobs:
           cp -r build release/
           cp -r node_modules release/
           cp -r migrations release/
+          cp -r scripts release/
           cp package.json release/
           cp schema.sql release/
           cd release
