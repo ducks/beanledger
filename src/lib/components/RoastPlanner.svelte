@@ -432,8 +432,10 @@
             <input
               type="number"
               step="0.01"
+              class="leftover-input"
               value={leftovers[group.id] ?? 0}
               onchange={(e) => updateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
+              onwheel={(e) => e.currentTarget.blur()}
             />
             <span class="unit">lb</span>
           </div>
@@ -767,6 +769,16 @@
     color: #b29244;
     font-family: var(--font-family);
     font-size: 12px;
+  }
+
+  .leftover-input::-webkit-inner-spin-button,
+  .leftover-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .leftover-input[type=number] {
+    -moz-appearance: textfield;
   }
 
   .unit {
