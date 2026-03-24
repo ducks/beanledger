@@ -72,9 +72,22 @@
 
   async function deleteGroup(id: string) {
     if (!confirm('Delete this roast group and all its products?')) return;
-    await fetch(`/api/groups?id=${id}`, { method: 'DELETE' });
-    await loadData();
-    onUpdate();
+
+    try {
+      const res = await fetch(`/api/groups?id=${id}`, { method: 'DELETE' });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete group');
+        return;
+      }
+
+      await loadData();
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to delete group:', err);
+      alert('Network error while deleting group');
+    }
   }
 
   async function toggleProductActive(product: Product) {

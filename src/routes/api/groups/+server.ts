@@ -80,6 +80,16 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
     return json({ error: 'Missing id' }, { status: 400 });
   }
 
-  await query('DELETE FROM roast_groups WHERE id = $1 AND tenant_id = $2', [id, locals.tenant.id]);
-  return json({ success: true });
+  try {
+    // Delete associated products first
+    await query('DELETE FROM products WHERE group_id = $1 AND tenant_id = $2', [id, locals.tenant.id]);
+
+    // Then delete the group
+    await query('DELETE FROM roast_groups WHERE id = $1 AND tenant_id = $2', [id, locals.tenant.id]);
+
+    return json({ success: true });
+  } catch (err) {
+    console.error('Error deleting group:', err);
+    return json({ error: 'Failed to delete group' }, { status: 500 });
+  }
 };
