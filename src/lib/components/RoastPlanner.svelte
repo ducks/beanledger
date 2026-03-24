@@ -8,6 +8,7 @@
   import Reports from './Reports.svelte';
   import Catalog from './Catalog.svelte';
   import Settings from './Settings.svelte';
+  import LeftoverConfirmModal from './LeftoverConfirmModal.svelte';
 
   interface Props {
     initialDate?: string;
@@ -35,6 +36,7 @@
   let showReports = $state(false);
   let showCatalog = $state(false);
   let showSettings = $state(false);
+  let showLeftoverConfirm = $state(false);
 
   onMount(async () => {
     await loadData();
@@ -138,8 +140,12 @@
     }
   }
 
-  async function finishRoastDay() {
-    if (!confirm('Mark this roast day as complete? You will no longer be able to edit it.')) return;
+  function finishRoastDay() {
+    showLeftoverConfirm = true;
+  }
+
+  async function confirmFinishRoastDay() {
+    showLeftoverConfirm = false;
 
     try {
       // Save snapshot with complete data before marking as complete
@@ -502,6 +508,17 @@
     onClose={() => (showSettings = false)}
     onUnitsChange={(newUnits) => (units = newUnits)}
     onBatchOverridesChange={loadBatchOverrides}
+  />
+{/if}
+
+{#if showLeftoverConfirm}
+  <LeftoverConfirmModal
+    groups={plan}
+    {leftovers}
+    {units}
+    onConfirm={confirmFinishRoastDay}
+    onCancel={() => (showLeftoverConfirm = false)}
+    onUpdateLeftover={updateLeftover}
   />
 {/if}
 
