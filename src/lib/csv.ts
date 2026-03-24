@@ -121,6 +121,55 @@ export function parseOrderCsv(csvText: string): CsvRow[] {
 }
 
 /**
+ * Calculate similarity score between two strings
+ * Returns a score from 0-100, where 100 is a perfect match
+ */
+function calculateSimilarity(str1: string, str2: string): number {
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+
+  // Exact match
+  if (s1 === s2) return 100;
+
+  // Check if one contains the other
+  if (s1.includes(s2) || s2.includes(s1)) {
+    // Prefer shorter strings (less difference in length)
+    const lenDiff = Math.abs(s1.length - s2.length);
+    const maxLen = Math.max(s1.length, s2.length);
+    return 80 - (lenDiff / maxLen) * 30; // Score 50-80 based on length difference
+  }
+
+  // Simple Levenshtein distance for other cases
+  const matrix: number[][] = [];
+  for (let i = 0; i <= s1.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= s2.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= s1.length; i++) {
+    for (let j = 1; j <= s2.length; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  const distance = matrix[s1.length][s2.length];
+  const maxLen = Math.max(s1.length, s2.length);
+  const similarity = (1 - distance / maxLen) * 100;
+
+  return similarity;
+}
+
+/**
  * Match CSV rows to products from database
  */
 export function matchProducts(
@@ -142,18 +191,22 @@ export function matchProducts(
       };
     }
 
-    // Try fuzzy match (contains or is contained)
-    const fuzzyMatch = products.find((p) => {
-      const pLower = p.name.toLowerCase();
-      const rowLower = row.productName.toLowerCase();
-      return pLower.includes(rowLower) || rowLower.includes(pLower);
-    });
+    // Score all products and find the best match
+    const scoredProducts = products.map(p => ({
+      product: p,
+      score: calculateSimilarity(p.name, row.productName)
+    }));
 
-    if (fuzzyMatch) {
+    // Sort by score descending
+    scoredProducts.sort((a, b) => b.score - a.score);
+
+    // Use best match if score is above threshold (50)
+    const bestMatch = scoredProducts[0];
+    if (bestMatch && bestMatch.score >= 50) {
       return {
         productName: row.productName,
         quantity: row.quantity,
-        matchedProduct: fuzzyMatch,
+        matchedProduct: bestMatch.product,
         confidence: 'fuzzy'
       };
     }

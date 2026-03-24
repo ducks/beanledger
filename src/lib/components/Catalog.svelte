@@ -16,6 +16,8 @@
   let loading = $state(true);
   let showGroupForm = $state(false);
   let editingGroup = $state<RoastGroup | null>(null);
+  let productSearch = $state('');
+  let groupSearch = $state('');
 
   // Roast group form state
   let formId = $state('');
@@ -31,6 +33,36 @@
   let productFormName = $state('');
   let productFormLbs = $state(0);
   let productFormGroupId = $state('');
+
+  // Filtered lists based on search
+  const filteredProducts = $derived(
+    productSearch.trim()
+      ? products.filter(p => {
+          const query = productSearch.toLowerCase();
+          const groupName = groups.find(g => g.id === p.group_id)?.label.toLowerCase() || '';
+          return (
+            p.name.toLowerCase().includes(query) ||
+            p.id.toLowerCase().includes(query) ||
+            groupName.includes(query) ||
+            p.lbs.toString().includes(query)
+          );
+        })
+      : products
+  );
+
+  const filteredGroups = $derived(
+    groupSearch.trim()
+      ? groups.filter(g => {
+          const query = groupSearch.toLowerCase();
+          return (
+            g.label.toLowerCase().includes(query) ||
+            g.id.toLowerCase().includes(query) ||
+            g.batch_type.toLowerCase().includes(query) ||
+            g.type.toLowerCase().includes(query)
+          );
+        })
+      : groups
+  );
 
   async function loadData() {
     loading = true;
@@ -225,6 +257,12 @@
       {:else if tab === 'products'}
         <div class="section-header">
           <div class="section-title">Products</div>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search products..."
+            bind:value={productSearch}
+          />
           <a href="/products/new" class="add-button">+ Add Product</a>
         </div>
         <div class="table-container">
@@ -239,7 +277,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each products as product}
+              {#each filteredProducts as product}
                 <tr class:inactive={!product.active}>
                   <td>{product.name}</td>
                   <td>{product.lbs} lb</td>
@@ -270,6 +308,12 @@
       {:else}
         <div class="section-header">
           <div class="section-title">Roast Groups</div>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search groups..."
+            bind:value={groupSearch}
+          />
           <button class="add-button" onclick={openCreateGroupForm}>+ Add Roast Group</button>
         </div>
         <div class="table-container">
@@ -286,7 +330,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each groups as group}
+              {#each filteredGroups as group}
                 <tr class:inactive={!group.active}>
                   <td>{group.id}</td>
                   <td>{group.label}</td>
@@ -538,6 +582,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     margin-bottom: 16px;
   }
 
@@ -547,6 +592,21 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 6px 12px;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    color: #231f20;
+    font-family: var(--font-family);
+    font-size: 12px;
+  }
+
+  .search-input::placeholder {
+    color: #6b7360;
   }
 
   .add-button {
