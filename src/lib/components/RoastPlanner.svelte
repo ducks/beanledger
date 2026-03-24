@@ -171,13 +171,28 @@
         return product ? { product_name: product.name, qty: o.qty } : null;
       }).filter(Boolean);
 
+      // Calculate predicted leftovers and merge with manual adjustments
+      const finalLeftovers: Record<string, number> = {};
+      for (const groupWithCalc of plan) {
+        // Use manually entered value if exists, otherwise use predicted
+        const manualValue = leftovers[groupWithCalc.id];
+        const predictedValue = groupWithCalc.calc.predictedLeftover;
+
+        // If there's a manual value (even if 0), use it; otherwise use predicted
+        if (manualValue !== undefined) {
+          finalLeftovers[groupWithCalc.id] = manualValue;
+        } else if (predictedValue > 0) {
+          finalLeftovers[groupWithCalc.id] = predictedValue;
+        }
+      }
+
       await fetch('/api/snapshots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           production_date: date,
           orders: orderData,
-          leftovers,
+          leftovers: finalLeftovers,
           groups,
           products,
           batchOverrides
