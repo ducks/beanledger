@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Order, Product, RoastGroup } from '$lib/types';
+  import type { GroupCalc } from '$lib/calc';
   import { formatWeight } from '$lib/calc';
 
   let {
@@ -8,6 +9,7 @@
     groups,
     productionDate,
     units,
+    batchesNeeded,
     onClose
   }: {
     orders: Order[];
@@ -15,6 +17,7 @@
     groups: RoastGroup[];
     productionDate: string;
     units: 'lbs' | 'kg';
+    batchesNeeded: Array<RoastGroup & { calc: GroupCalc }>;
     onClose: () => void;
   } = $props();
 
@@ -134,6 +137,10 @@
   .item-qty { font-size: 12px; font-weight: 700; text-align: right; }
   .item-weight { font-size: 10px; color: #666; text-align: right; min-width: 60px; }
   .group-total { text-align: right; padding: 4px 0; font-size: 10px; color: #666; margin-top: 4px; }
+  .batch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .batch-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
+  .batch-name { font-size: 11px; color: #666; font-weight: 700; margin-bottom: 4px; }
+  .batch-count { font-size: 16px; font-weight: 700; }
   .footer { margin-top: 20px; padding-top: 12px; border-top: 2px solid #ddd; display: flex; justify-content: space-between; }
   .footer-label { font-size: 10px; color: #666; }
   .footer-value { font-size: 16px; font-weight: 700; }
@@ -154,6 +161,9 @@
     .footer-label { color: #000; }
     .group-title { border-bottom-color: #333; page-break-after: avoid; }
     .group-total { color: #000; }
+    .batch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .batch-box { border-color: #333; }
+    .batch-name { color: #000; }
     div[style*="margin-bottom"] { margin-bottom: 12px !important; page-break-inside: avoid; }
   }
 </style>
@@ -171,6 +181,16 @@ ${pickList.bySizeAll.map((s) => `    <div class="size-box">
     </div>`).join('\n')}
   </div>
 </div>
+
+${batchesNeeded.length > 0 ? `<div class="section section-batches">
+  <div class="section-title">Batches to Roast</div>
+  <div class="batch-grid">
+${batchesNeeded.map((g) => `    <div class="batch-box">
+      <div class="batch-name">${g.label}</div>
+      <div class="batch-count">${g.calc.batchesUp} × ${g.calc.batchWeight} lb</div>
+    </div>`).join('\n')}
+  </div>
+</div>` : ''}
 
 <div class="section section-items">
   <div class="section-title">All Items by Roast Group</div>
@@ -271,6 +291,24 @@ ${g.items
           {/each}
         </div>
       </div>
+
+      <!-- Batches Needed -->
+      {#if batchesNeeded.length > 0}
+        <div class="batches-section">
+          <div class="section-title">Batches to Roast</div>
+          <div class="batch-list">
+            {#each batchesNeeded as group}
+              <div class="batch-item">
+                <div class="batch-label">{group.label}</div>
+                <div class="batch-info">
+                  <span class="batch-count">{group.calc.batchesUp}</span>
+                  <span class="batch-type">× {group.calc.batchWeight} lb</span>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <!-- Items by Group -->
       <div class="items-section">
@@ -462,6 +500,52 @@ ${g.items
     line-height: 1;
     margin-top: 2px;
     font-weight: 700;
+  }
+
+  .batches-section {
+    padding: 14px 20px;
+    border-bottom: 1px solid #c8c4a8;
+    background: #f6f4eb;
+  }
+
+  .batch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .batch-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 6px;
+  }
+
+  .batch-label {
+    font-size: 11px;
+    color: #231f20;
+    font-weight: 700;
+  }
+
+  .batch-info {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .batch-count {
+    font-size: 20px;
+    color: #b29244;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .batch-type {
+    font-size: 10px;
+    color: #6b7360;
   }
 
   .items-section {

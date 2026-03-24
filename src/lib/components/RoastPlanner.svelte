@@ -473,6 +473,7 @@
     {groups}
     {productionDate}
     {units}
+    batchesNeeded={roastNeeded}
     onClose={() => (showPickList = false)}
   />
 {/if}
