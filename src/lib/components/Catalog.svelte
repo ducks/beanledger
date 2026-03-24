@@ -37,17 +37,30 @@
   // Filtered lists based on search
   const filteredProducts = $derived(
     productSearch.trim()
-      ? products.filter(p =>
-          p.name.toLowerCase().includes(productSearch.toLowerCase())
-        )
+      ? products.filter(p => {
+          const query = productSearch.toLowerCase();
+          const groupName = groups.find(g => g.id === p.group_id)?.label.toLowerCase() || '';
+          return (
+            p.name.toLowerCase().includes(query) ||
+            p.id.toLowerCase().includes(query) ||
+            groupName.includes(query) ||
+            p.lbs.toString().includes(query)
+          );
+        })
       : products
   );
 
   const filteredGroups = $derived(
     groupSearch.trim()
-      ? groups.filter(g =>
-          g.label.toLowerCase().includes(groupSearch.toLowerCase())
-        )
+      ? groups.filter(g => {
+          const query = groupSearch.toLowerCase();
+          return (
+            g.label.toLowerCase().includes(query) ||
+            g.id.toLowerCase().includes(query) ||
+            g.batch_type.toLowerCase().includes(query) ||
+            g.type.toLowerCase().includes(query)
+          );
+        })
       : groups
   );
 
