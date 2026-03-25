@@ -37,6 +37,9 @@
   let showCatalog = $state(false);
   let showSettings = $state(false);
   let showLeftoverConfirm = $state(false);
+  let showManualAddModal = $state(false);
+  let selectedProduct = $state<Product | null>(null);
+  let expandedGroups = $state<Set<string>>(new Set());
 
   onMount(async () => {
     await loadData();
@@ -295,6 +298,50 @@
 
   const roastNeeded = $derived(plan.filter((g) => g.calc.needed > 0));
 
+  const ordersByGroup = $derived(
+    groups.reduce((acc, group) => {
+      const groupOrders = orders
+        .map(order => {
+          const product = products.find(p => p.id === order.product_id);
+          return product && product.group_id === group.id ? { order, product } : null;
+        })
+        .filter(Boolean) as Array<{ order: Order; product: Product }>;
+      acc[group.id] = groupOrders;
+      return acc;
+    }, {} as Record<string, Array<{ order: Order; product: Product }>>)
+  );
+
+  function toggleGroup(groupId: string) {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupId)) {
+      newExpanded.delete(groupId);
+    } else {
+      newExpanded.add(groupId);
+    }
+    expandedGroups = newExpanded;
+  }
+
+  async function deleteOrder(orderId: string) {
+    if (!confirm('Remove this order?')) return;
+
+    try {
+      const res = await fetch(`/api/orders?id=${orderId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete order');
+        return;
+      }
+
+      await loadData();
+    } catch (err) {
+      console.error('Delete order error:', err);
+      alert('Failed to delete order');
+    }
+  }
+
   async function addOrder(product: Product) {
     const existing = orders.find((o) => o.product_id === product.id);
 
@@ -390,24 +437,9 @@
   <ImportHistory bind:this={importHistory} productionDate={productionDate} onDelete={loadData} />
 
   <div class="search-and-sort">
-    <div class="search-bar">
-      <input
-        type="text"
-        placeholder="Search products..."
-        bind:value={search}
-        onfocus={() => (dropOpen = true)}
-      />
-      {#if dropOpen && suggestions.length > 0}
-        <div class="dropdown">
-        {#each suggestions as product}
-          <button class="dropdown-item" onclick={() => addOrder(product)}>
-            {product.name}
-            <span class="meta">{product.lbs} lb</span>
-          </button>
-        {/each}
-      </div>
-    {/if}
-    </div>
+    <button class="add-manual-btn" onclick={() => (showManualAddModal = true)}>
+      + Add Manual Product
+    </button>
     <div class="sort-control">
       <select bind:value={sortBy}>
         <option value="type">Sort: Type</option>
@@ -467,6 +499,44 @@
             </div>
           </div>
         {/if}
+
+        {#if ordersByGroup[group.id] && ordersByGroup[group.id].length > 0}
+          <div class="products-section">
+            <button
+              class="products-toggle"
+              onclick={() => toggleGroup(group.id)}
+            >
+              <span class="toggle-icon">{expandedGroups.has(group.id) ? '▼' : '▶'}</span>
+              <span class="toggle-text">
+                {ordersByGroup[group.id].length} product{ordersByGroup[group.id].length === 1 ? '' : 's'}
+              </span>
+            </button>
+
+            {#if expandedGroups.has(group.id)}
+              <div class="products-list">
+                {#each ordersByGroup[group.id] as { order, product }}
+                  <div class="product-item">
+                    <div class="product-name">
+                      {product.name}
+                      {#if !order.import_batch_id || order.import_batch_id.trim() === ''}
+                        <span class="manual-badge" title="Manually added">M</span>
+                      {/if}
+                    </div>
+                    <div class="product-qty">×{order.qty}</div>
+                    <div class="product-weight">{formatWeight(product.lbs * order.qty, units)}</div>
+                    <button
+                      class="delete-product-btn"
+                      onclick={() => deleteOrder(order.id)}
+                      title="Remove from production day"
+                    >
+                      ×
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -480,7 +550,7 @@
     {productionDate}
     {units}
     batchesNeeded={roastNeeded}
-    onClose={() => (showPickList = false)}
+    onClose={() => { showPickList = false; loadData(); }}
   />
 {/if}
 
@@ -520,6 +590,74 @@
     onCancel={() => (showLeftoverConfirm = false)}
     onUpdateLeftover={updateLeftover}
   />
+{/if}
+
+{#if showManualAddModal}
+  <div class="modal-backdrop" onclick={(e) => { if (e.target === e.currentTarget) showManualAddModal = false; }}>
+    <div class="modal manual-add-modal">
+      <div class="modal-header">
+        <div class="modal-title">Add Manual Product</div>
+        <button class="close-button" onclick={() => (showManualAddModal = false)}>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="manual-add-form">
+          <label>
+            <span class="label-text">Quantity</span>
+            <input
+              type="number"
+              bind:value={qty}
+              min="1"
+              placeholder="1"
+            />
+          </label>
+          <label>
+            <span class="label-text">Product</span>
+            <input
+              type="text"
+              placeholder="Search products..."
+              bind:value={search}
+              onfocus={() => (dropOpen = true)}
+              oninput={() => { dropOpen = true; selectedProduct = null; }}
+            />
+            {#if dropOpen && suggestions.length > 0}
+              <div class="dropdown">
+                {#each suggestions as product}
+                  <button
+                    class="dropdown-item"
+                    class:selected={selectedProduct?.id === product.id}
+                    onclick={() => { selectedProduct = product; search = product.name; dropOpen = false; }}
+                  >
+                    {product.name}
+                    <span class="meta">{product.lbs} lb</span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+            {#if dropOpen && search && suggestions.length === 0}
+              <div class="dropdown">
+                <div class="dropdown-empty">No products found</div>
+              </div>
+            {/if}
+          </label>
+          <button
+            class="add-product-btn"
+            disabled={!selectedProduct}
+            onclick={() => {
+              if (selectedProduct) {
+                addOrder(selectedProduct);
+                showManualAddModal = false;
+                search = '';
+                selectedProduct = null;
+                dropOpen = false;
+              }
+            }}
+          >
+            Add Product
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <style>
@@ -651,8 +789,25 @@
   .search-and-sort {
     display: flex;
     gap: 16px;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 24px;
+  }
+
+  .add-manual-btn {
+    padding: 10px 16px;
+    background: #b29244;
+    color: #f6f4eb;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: var(--font-family);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+
+  .add-manual-btn:hover {
+    background: #9a7d3a;
   }
 
   .search-bar {
@@ -662,6 +817,126 @@
 
   .sort-control {
     min-width: 200px;
+  }
+
+  .manual-add-modal {
+    width: 500px;
+  }
+
+  .manual-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .manual-add-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .label-text {
+    font-size: 11px;
+    color: #6b7360;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .manual-add-form input[type="number"],
+  .manual-add-form input[type="text"] {
+    padding: 10px 12px;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: var(--font-family);
+    background: #f6f4eb;
+  }
+
+  .manual-add-form input[type="number"] {
+    width: 120px;
+  }
+
+  .manual-add-form label {
+    position: relative;
+  }
+
+  .manual-add-form .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .manual-add-form .dropdown-item {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-family);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #d8d4bc;
+  }
+
+  .manual-add-form .dropdown-item:hover {
+    background: #ddd9c4;
+  }
+
+  .manual-add-form .dropdown-item.selected {
+    background: #b29244;
+    color: #f6f4eb;
+  }
+
+  .manual-add-form .dropdown-item.selected .meta {
+    color: #f6f4eb;
+  }
+
+  .manual-add-form .dropdown-item .meta {
+    font-size: 11px;
+    color: #6b7360;
+  }
+
+  .manual-add-form .dropdown-empty {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #6b7360;
+    text-align: center;
+  }
+
+  .add-product-btn {
+    padding: 10px 16px;
+    background: #b29244;
+    color: #f6f4eb;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: var(--font-family);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+
+  .add-product-btn:hover:not(:disabled) {
+    background: #9a7d3a;
+  }
+
+  .add-product-btn:disabled {
+    background: #c8c4a8;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .sort-control select {
@@ -848,5 +1123,176 @@
     color: #b75742;
     line-height: 1;
     margin-top: 2px;
+  }
+
+  /* Modal styles */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal {
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .manual-add-modal {
+    max-height: 90vh;
+  }
+
+  .manual-add-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #c8c4a8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-size: 15px;
+    color: #b29244;
+    font-weight: 700;
+  }
+
+  .modal-body {
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .close-button:hover {
+    color: #231f20;
+  }
+
+  /* Products section */
+  .products-section {
+    margin-top: 12px;
+    border-top: 1px solid #d8d4bc;
+    padding-top: 10px;
+  }
+
+  .products-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: var(--font-family);
+    color: #6b7360;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .products-toggle:hover {
+    background: #d8d4bc;
+  }
+
+  .toggle-icon {
+    font-size: 10px;
+    line-height: 1;
+    transition: transform 0.15s;
+  }
+
+  .toggle-text {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .products-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .product-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #f6f4eb;
+    border: 1px solid #d8d4bc;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .product-name {
+    flex: 1;
+    color: #231f20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .product-qty {
+    color: #6b7360;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .product-weight {
+    color: #6b7360;
+    font-size: 12px;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .delete-product-btn {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .delete-product-btn:hover {
+    color: #d9534f;
+  }
+
+  .product-item:hover .delete-product-btn {
+    opacity: 1;
+  }
+
+  .manual-badge {
+    display: inline-block;
+    background: #b29244;
+    color: #f6f4eb;
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    vertical-align: middle;
   }
 </style>
