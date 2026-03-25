@@ -933,4 +933,57 @@
     line-height: 1;
     margin-top: 2px;
   }
+
+  /* Modal styles */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal {
+    background: #eae8d8;
+    border: 1px solid #c8c4a8;
+    border-radius: 8px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #c8c4a8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-size: 15px;
+    color: #b29244;
+    font-weight: 700;
+  }
+
+  .modal-body {
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .close-button:hover {
+    color: #231f20;
+  }
 </style>
