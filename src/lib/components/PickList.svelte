@@ -39,10 +39,22 @@
     // By package size (all groups combined)
     const sizeMap = new Map<number, { size: string; qty: number; totalLbs: number }>();
 
-    // By roast group
+    // By roast group - now tracking individual orders
     const groupMap = new Map<
       string,
-      { id: string; label: string; items: { name: string; qty: number; lbs: number; totalLbs: number }[] }
+      {
+        id: string;
+        label: string;
+        items: {
+          orderId: string;
+          productId: string;
+          name: string;
+          qty: number;
+          lbs: number;
+          totalLbs: number;
+          isManual: boolean;
+        }[]
+      }
     >();
 
     for (const order of orders) {
@@ -63,25 +75,22 @@
       sizeEntry.qty += order.qty;
       sizeEntry.totalLbs += product.lbs * order.qty;
 
-      // Track by group and product (deduplicate by product_id)
+      // Track by group - keep individual orders instead of aggregating
       if (!groupMap.has(group.id)) {
         groupMap.set(group.id, { id: group.id, label: group.label, items: [] });
       }
       const groupEntry = groupMap.get(group.id)!;
 
-      // Find existing item or create new one
-      const existingItem = groupEntry.items.find(item => item.name === product.name);
-      if (existingItem) {
-        existingItem.qty += order.qty;
-        existingItem.totalLbs += product.lbs * order.qty;
-      } else {
-        groupEntry.items.push({
-          name: product.name,
-          qty: order.qty,
-          lbs: product.lbs,
-          totalLbs: product.lbs * order.qty
-        });
-      }
+      // Add each order as a separate item
+      groupEntry.items.push({
+        orderId: order.id,
+        productId: product.id,
+        name: product.name,
+        qty: order.qty,
+        lbs: product.lbs,
+        totalLbs: product.lbs * order.qty,
+        isManual: !order.import_batch_id
+      });
     }
 
     // Sort sizes by weight
@@ -203,7 +212,7 @@ ${g.items
   })
   .map((item) => `    <div class="item">
       <div class="checkbox"></div>
-      <div class="item-name">${item.name}</div>
+      <div class="item-name">${item.name}${item.isManual ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M</span>' : ''}</div>
       <div class="item-qty">×${item.qty}</div>
       <div class="item-weight">${formatWeight(item.totalLbs, units)}</div>
     </div>`).join('\n')}
@@ -245,6 +254,28 @@ ${g.items
       pickSort = { field, dir: pickSort.dir === 'asc' ? 'desc' : 'asc' };
     } else {
       pickSort = { field, dir: 'asc' };
+    }
+  }
+
+  async function deleteOrder(orderId: string) {
+    if (!confirm('Remove this order from the production day?')) return;
+
+    try {
+      const res = await fetch(`/api/orders?id=${orderId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete order');
+        return;
+      }
+
+      // Close modal to trigger parent refresh
+      onClose();
+    } catch (err) {
+      console.error('Delete order error:', err);
+      alert('Failed to delete order');
     }
   }
 </script>
@@ -322,9 +353,21 @@ ${g.items
             }) as item}
               <div class="pick-item">
                 <div class="checkbox"></div>
-                <div class="item-name">{item.name}</div>
+                <div class="item-name">
+                  {item.name}
+                  {#if item.isManual}
+                    <span class="manual-badge" title="Manually added">M</span>
+                  {/if}
+                </div>
                 <div class="item-qty">×{item.qty}</div>
                 <div class="item-weight">{formatWeight(item.totalLbs, units)}</div>
+                <button
+                  class="delete-order-btn"
+                  onclick={() => deleteOrder(item.orderId)}
+                  title="Remove from production day"
+                >
+                  ×
+                </button>
               </div>
             {/each}
             <div class="group-total">
@@ -573,6 +616,11 @@ ${g.items
     gap: 12px;
     padding: 5px 0;
     border-bottom: 1px solid #d8d4bc;
+    position: relative;
+  }
+
+  .pick-item:hover .delete-order-btn {
+    opacity: 1;
   }
 
   .checkbox {
@@ -641,5 +689,33 @@ ${g.items
     font-size: 16px;
     color: #b29244;
     font-weight: 700;
+  }
+
+  .manual-badge {
+    display: inline-block;
+    background: #b29244;
+    color: #f6f4eb;
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .delete-order-btn {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .delete-order-btn:hover {
+    color: #d9534f;
   }
 </style>

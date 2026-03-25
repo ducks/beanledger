@@ -32,6 +32,7 @@ export interface Order {
   product_id: string;
   qty: number;
   production_date: string;
+  import_batch_id?: string | null; // NULL = manual, non-NULL = CSV import
 }
 
 export interface Leftover {
