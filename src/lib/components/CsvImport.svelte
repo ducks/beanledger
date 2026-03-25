@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
-  import type { RoastGroup, BatchOverride } from '$lib/types';
+  import type { RoastGroup, BatchOverride, Product } from '$lib/types';
 
   let {
     productionDate,
@@ -20,12 +20,15 @@
   let error = $state('');
   let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
   let groups = $state<RoastGroup[]>([]);
+  let products = $state<Product[]>([]);
   let batchTypes = $state<BatchOverride[]>([]);
   let ignoredSkus = $state<string[]>([]);
   let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: string; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
+  let manualMatches = $state<Record<string, string>>({});
 
   onMount(async () => {
     await loadGroups();
+    await loadProducts();
     await loadBatchTypes();
 
     // Warn if no batch types exist
@@ -37,6 +40,11 @@
   async function loadGroups() {
     const res = await fetch('/api/groups');
     groups = await res.json();
+  }
+
+  async function loadProducts() {
+    const res = await fetch('/api/products');
+    products = await res.json();
   }
 
   async function loadBatchTypes() {
@@ -244,7 +252,8 @@
           csvText,
           productionDate,
           filename: filename || 'pasted.csv',
-          confirm: true
+          confirm: true,
+          manualMatches
         })
       });
 
@@ -457,7 +466,26 @@
                 <td>{match.productName}</td>
                 <td>{match.quantity}</td>
                 <td>
-                  {#if match.matchedProduct}
+                  {#if match.confidence === 'fuzzy'}
+                    <select
+                      class="match-select"
+                      value={manualMatches[match.productName] || match.matchedProduct?.id || ''}
+                      onchange={(e) => {
+                        const target = e.target as HTMLSelectElement;
+                        manualMatches[match.productName] = target.value;
+                      }}
+                    >
+                      {#if match.matchedProduct}
+                        <option value={match.matchedProduct.id}>{match.matchedProduct.name} (suggested)</option>
+                      {/if}
+                      <option value="">-- Select product --</option>
+                      {#each products as product}
+                        {#if product.id !== match.matchedProduct?.id}
+                          <option value={product.id}>{product.name}</option>
+                        {/if}
+                      {/each}
+                    </select>
+                  {:else if match.matchedProduct}
                     {match.matchedProduct.name}
                   {:else}
                     <em>No match found</em>
@@ -467,7 +495,7 @@
                   {#if match.confidence === 'exact'}
                     <span class="badge success">Exact</span>
                   {:else if match.confidence === 'fuzzy'}
-                    <span class="badge warning">Fuzzy</span>
+                    <span class="badge warning">Fuzzy - Review</span>
                   {:else}
                     <span class="badge error">None</span>
                   {/if}
@@ -858,5 +886,22 @@
 
   .text-input::placeholder {
     color: #6b7360;
+  }
+
+  .match-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid #f0e8d4;
+    border-radius: 4px;
+    background: #fcf9ec;
+    color: #231f20;
+    font-size: 0.85rem;
+    font-family: var(--font-family);
+    cursor: pointer;
+  }
+
+  .match-select:focus {
+    outline: none;
+    border-color: #b29244;
   }
 </style>

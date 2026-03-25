@@ -12,6 +12,7 @@ import type { Product } from '$lib/types';
  * - productionDate: string (YYYY-MM-DD)
  * - filename: string (optional, for tracking)
  * - confirm: boolean (if true, create orders; if false, just preview)
+ * - manualMatches: Record<string, string> (optional, product name -> product ID overrides)
  *
  * Returns:
  * - matches: array of match results
@@ -24,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   try {
-    const { csvText, productionDate, filename, confirm } = await request.json();
+    const { csvText, productionDate, filename, confirm, manualMatches } = await request.json();
 
     if (!csvText || !productionDate) {
       return json({ error: 'csvText and productionDate are required' }, { status: 400 });
@@ -41,7 +42,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const products = productsResult.rows;
 
     // Match CSV rows to products
-    const matches = matchProducts(csvRows, products);
+    let matches = matchProducts(csvRows, products);
+
+    // Apply manual overrides if provided
+    if (manualMatches && Object.keys(manualMatches).length > 0) {
+      matches = matches.map(match => {
+        const manualProductId = manualMatches[match.productName];
+        if (manualProductId) {
+          const manualProduct = products.find(p => p.id === manualProductId);
+          if (manualProduct) {
+            return {
+              ...match,
+              matchedProduct: manualProduct,
+              confidence: 'exact' as const
+            };
+          }
+        }
+        return match;
+      });
+    }
 
     // If not confirming, just return preview
     if (!confirm) {
