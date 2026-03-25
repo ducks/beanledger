@@ -19,6 +19,17 @@
     onUpdateLeftover: (groupId: string, value: number) => void;
   } = $props();
 
+  let manuallyChecked = $state<Set<string>>(new Set());
+
+  function handleLeftoverUpdate(groupId: string, value: number) {
+    manuallyChecked = new Set(manuallyChecked).add(groupId);
+    onUpdateLeftover(groupId, value);
+  }
+
+  function handleFocus(groupId: string) {
+    manuallyChecked = new Set(manuallyChecked).add(groupId);
+  }
+
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
       onCancel();
@@ -38,15 +49,22 @@
 
       <div class="leftover-list">
         {#each groups as group}
-          <div class="leftover-item">
-            <div class="group-label">{group.label}</div>
+          {@const isChecked = manuallyChecked.has(group.id)}
+          <div class="leftover-item" class:manual-entry={isChecked}>
+            <div class="group-label-wrapper">
+              {#if isChecked}
+                <span class="checkmark">✓</span>
+              {/if}
+              <div class="group-label">{group.label}</div>
+            </div>
             <div class="leftover-input-wrapper">
               <input
                 type="number"
                 step="0.01"
                 class="leftover-input"
                 value={leftovers[group.id] ?? group.calc.predictedLeftover ?? 0}
-                onchange={(e) => onUpdateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
+                onfocus={() => handleFocus(group.id)}
+                onchange={(e) => handleLeftoverUpdate(group.id, parseFloat(e.currentTarget.value) || 0)}
                 onwheel={(e) => e.currentTarget.blur()}
               />
               <span class="unit">lb</span>
@@ -141,6 +159,32 @@
     background: #f6f4eb;
     border: 1px solid #c8c4a8;
     border-radius: 6px;
+    transition: all 0.15s;
+  }
+
+  .leftover-item.manual-entry {
+    background: #e8f4e8;
+    border-color: #7ba37b;
+  }
+
+  .group-label-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .checkmark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #7ba37b;
+    color: #f6f4eb;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
   }
 
   .group-label {
