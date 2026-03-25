@@ -39,6 +39,7 @@
   let showLeftoverConfirm = $state(false);
   let showManualAddModal = $state(false);
   let selectedProduct = $state<Product | null>(null);
+  let expandedGroups = $state<Set<string>>(new Set());
 
   onMount(async () => {
     await loadData();
@@ -297,6 +298,50 @@
 
   const roastNeeded = $derived(plan.filter((g) => g.calc.needed > 0));
 
+  const ordersByGroup = $derived(
+    groups.reduce((acc, group) => {
+      const groupOrders = orders
+        .map(order => {
+          const product = products.find(p => p.id === order.product_id);
+          return product && product.group_id === group.id ? { order, product } : null;
+        })
+        .filter(Boolean) as Array<{ order: Order; product: Product }>;
+      acc[group.id] = groupOrders;
+      return acc;
+    }, {} as Record<string, Array<{ order: Order; product: Product }>>)
+  );
+
+  function toggleGroup(groupId: string) {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupId)) {
+      newExpanded.delete(groupId);
+    } else {
+      newExpanded.add(groupId);
+    }
+    expandedGroups = newExpanded;
+  }
+
+  async function deleteOrder(orderId: string) {
+    if (!confirm('Remove this order?')) return;
+
+    try {
+      const res = await fetch(`/api/orders?id=${orderId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete order');
+        return;
+      }
+
+      await loadData();
+    } catch (err) {
+      console.error('Delete order error:', err);
+      alert('Failed to delete order');
+    }
+  }
+
   async function addOrder(product: Product) {
     const existing = orders.find((o) => o.product_id === product.id);
 
@@ -452,6 +497,44 @@
               <div class="batch-label">Batches</div>
               <div class="batch-up">{calc.batchesUp}</div>
             </div>
+          </div>
+        {/if}
+
+        {#if ordersByGroup[group.id] && ordersByGroup[group.id].length > 0}
+          <div class="products-section">
+            <button
+              class="products-toggle"
+              onclick={() => toggleGroup(group.id)}
+            >
+              <span class="toggle-icon">{expandedGroups.has(group.id) ? '▼' : '▶'}</span>
+              <span class="toggle-text">
+                {ordersByGroup[group.id].length} product{ordersByGroup[group.id].length === 1 ? '' : 's'}
+              </span>
+            </button>
+
+            {#if expandedGroups.has(group.id)}
+              <div class="products-list">
+                {#each ordersByGroup[group.id] as { order, product }}
+                  <div class="product-item">
+                    <div class="product-name">
+                      {product.name}
+                      {#if !order.import_batch_id || order.import_batch_id.trim() === ''}
+                        <span class="manual-badge" title="Manually added">M</span>
+                      {/if}
+                    </div>
+                    <div class="product-qty">×{order.qty}</div>
+                    <div class="product-weight">{formatWeight(product.lbs * order.qty, units)}</div>
+                    <button
+                      class="delete-product-btn"
+                      onclick={() => deleteOrder(order.id)}
+                      title="Remove from production day"
+                    >
+                      ×
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -1102,5 +1185,114 @@
 
   .close-button:hover {
     color: #231f20;
+  }
+
+  /* Products section */
+  .products-section {
+    margin-top: 12px;
+    border-top: 1px solid #d8d4bc;
+    padding-top: 10px;
+  }
+
+  .products-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: var(--font-family);
+    color: #6b7360;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .products-toggle:hover {
+    background: #d8d4bc;
+  }
+
+  .toggle-icon {
+    font-size: 10px;
+    line-height: 1;
+    transition: transform 0.15s;
+  }
+
+  .toggle-text {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .products-list {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .product-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #f6f4eb;
+    border: 1px solid #d8d4bc;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .product-name {
+    flex: 1;
+    color: #231f20;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .product-qty {
+    color: #6b7360;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .product-weight {
+    color: #6b7360;
+    font-size: 12px;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  .delete-product-btn {
+    background: none;
+    border: none;
+    color: #6b7360;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .delete-product-btn:hover {
+    color: #d9534f;
+  }
+
+  .product-item:hover .delete-product-btn {
+    opacity: 1;
+  }
+
+  .manual-badge {
+    display: inline-block;
+    background: #b29244;
+    color: #f6f4eb;
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    vertical-align: middle;
   }
 </style>
