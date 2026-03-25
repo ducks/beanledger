@@ -113,6 +113,10 @@
     }, 0)
   );
 
+  const totalRoasts = $derived(
+    batchesNeeded.reduce((sum, g) => sum + g.calc.batchesUp, 0)
+  );
+
   const formatDate = (date: string) => {
     return new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
       month: 'short',
@@ -192,7 +196,7 @@ ${pickList.bySizeAll.map((s) => `    <div class="size-box">
 </div>
 
 ${batchesNeeded.length > 0 ? `<div class="section section-batches">
-  <div class="section-title">Batches to Roast</div>
+  <div class="section-title">Batches to Roast (${totalRoasts} total)</div>
   <div class="batch-grid">
 ${batchesNeeded.map((g) => `    <div class="batch-box">
       <div class="batch-name">${g.label}</div>
@@ -326,7 +330,7 @@ ${g.items
       <!-- Batches Needed -->
       {#if batchesNeeded.length > 0}
         <div class="batches-section">
-          <div class="section-title">Batches to Roast</div>
+          <div class="section-title">Batches to Roast ({totalRoasts} total)</div>
           <div class="batch-list">
             {#each batchesNeeded as group}
               <div class="batch-item">
