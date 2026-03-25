@@ -89,7 +89,7 @@
         qty: order.qty,
         lbs: product.lbs,
         totalLbs: product.lbs * order.qty,
-        isManual: !order.import_batch_id
+        isManual: !order.import_batch_id || order.import_batch_id.trim() === ''
       });
     }
 

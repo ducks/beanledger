@@ -38,6 +38,7 @@
   let showSettings = $state(false);
   let showLeftoverConfirm = $state(false);
   let showManualAddModal = $state(false);
+  let selectedProduct = $state<Product | null>(null);
 
   onMount(async () => {
     await loadData();
@@ -533,18 +534,43 @@
               placeholder="Search products..."
               bind:value={search}
               onfocus={() => (dropOpen = true)}
+              oninput={() => { dropOpen = true; selectedProduct = null; }}
             />
             {#if dropOpen && suggestions.length > 0}
               <div class="dropdown">
                 {#each suggestions as product}
-                  <button class="dropdown-item" onclick={() => { addOrder(product); showManualAddModal = false; }}>
+                  <button
+                    class="dropdown-item"
+                    class:selected={selectedProduct?.id === product.id}
+                    onclick={() => { selectedProduct = product; search = product.name; dropOpen = false; }}
+                  >
                     {product.name}
                     <span class="meta">{product.lbs} lb</span>
                   </button>
                 {/each}
               </div>
             {/if}
+            {#if dropOpen && search && suggestions.length === 0}
+              <div class="dropdown">
+                <div class="dropdown-empty">No products found</div>
+              </div>
+            {/if}
           </label>
+          <button
+            class="add-product-btn"
+            disabled={!selectedProduct}
+            onclick={() => {
+              if (selectedProduct) {
+                addOrder(selectedProduct);
+                showManualAddModal = false;
+                search = '';
+                selectedProduct = null;
+                dropOpen = false;
+              }
+            }}
+          >
+            Add Product
+          </button>
         </div>
       </div>
     </div>
@@ -746,6 +772,88 @@
 
   .manual-add-form input[type="number"] {
     width: 120px;
+  }
+
+  .manual-add-form label {
+    position: relative;
+  }
+
+  .manual-add-form .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #f6f4eb;
+    border: 1px solid #c8c4a8;
+    border-radius: 4px;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1001;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .manual-add-form .dropdown-item {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-family);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #d8d4bc;
+  }
+
+  .manual-add-form .dropdown-item:hover {
+    background: #ddd9c4;
+  }
+
+  .manual-add-form .dropdown-item.selected {
+    background: #b29244;
+    color: #f6f4eb;
+  }
+
+  .manual-add-form .dropdown-item.selected .meta {
+    color: #f6f4eb;
+  }
+
+  .manual-add-form .dropdown-item .meta {
+    font-size: 11px;
+    color: #6b7360;
+  }
+
+  .manual-add-form .dropdown-empty {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #6b7360;
+    text-align: center;
+  }
+
+  .add-product-btn {
+    padding: 10px 16px;
+    background: #b29244;
+    color: #f6f4eb;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: var(--font-family);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+
+  .add-product-btn:hover:not(:disabled) {
+    background: #9a7d3a;
+  }
+
+  .add-product-btn:disabled {
+    background: #c8c4a8;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .sort-control select {
@@ -953,6 +1061,15 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+
+  .manual-add-modal {
+    max-height: 90vh;
+  }
+
+  .manual-add-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
   }
 
   .modal-header {
