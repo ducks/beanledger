@@ -498,6 +498,16 @@
               <div class="batch-up">{calc.batchesUp}</div>
             </div>
           </div>
+        {:else if calc.totalLbs > 0}
+          <div class="batches">
+            <div class="batch-info">
+              <div class="batch-label">Predicted Leftover</div>
+              <div class="batch-precise">{formatWeight(leftovers[group.id] - calc.totalLbs, units)}</div>
+            </div>
+            <div class="batch-note">
+              <div class="batch-label">From Stock</div>
+            </div>
+          </div>
         {/if}
 
         {#if ordersByGroup[group.id] && ordersByGroup[group.id].length > 0}
@@ -1114,6 +1124,10 @@
   }
 
   .batch-rounded {
+    text-align: right;
+  }
+
+  .batch-note {
     text-align: right;
   }
 
