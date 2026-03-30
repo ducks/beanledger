@@ -39,20 +39,20 @@
     // By package size (all groups combined)
     const sizeMap = new Map<number, { size: string; qty: number; totalLbs: number }>();
 
-    // By roast group - now tracking individual orders
+    // By roast group - aggregate orders by product
     const groupMap = new Map<
       string,
       {
         id: string;
         label: string;
         items: {
-          orderId: string;
           productId: string;
           name: string;
           qty: number;
           lbs: number;
           totalLbs: number;
-          isManual: boolean;
+          hasManual: boolean;
+          hasImported: boolean;
         }[]
       }
     >();
@@ -75,22 +75,37 @@
       sizeEntry.qty += order.qty;
       sizeEntry.totalLbs += product.lbs * order.qty;
 
-      // Track by group - keep individual orders instead of aggregating
+      // Track by group - aggregate by product
       if (!groupMap.has(group.id)) {
         groupMap.set(group.id, { id: group.id, label: group.label, items: [] });
       }
       const groupEntry = groupMap.get(group.id)!;
 
-      // Add each order as a separate item
-      groupEntry.items.push({
-        orderId: order.id,
-        productId: product.id,
-        name: product.name,
-        qty: order.qty,
-        lbs: product.lbs,
-        totalLbs: product.lbs * order.qty,
-        isManual: !order.import_batch_id || order.import_batch_id.trim() === ''
-      });
+      // Find or create product entry
+      let productEntry = groupEntry.items.find(item => item.productId === product.id);
+      const isManual = !order.import_batch_id || order.import_batch_id.trim() === '';
+
+      if (!productEntry) {
+        productEntry = {
+          productId: product.id,
+          name: product.name,
+          qty: 0,
+          lbs: product.lbs,
+          totalLbs: 0,
+          hasManual: false,
+          hasImported: false
+        };
+        groupEntry.items.push(productEntry);
+      }
+
+      // Aggregate quantities
+      productEntry.qty += order.qty;
+      productEntry.totalLbs += product.lbs * order.qty;
+      if (isManual) {
+        productEntry.hasManual = true;
+      } else {
+        productEntry.hasImported = true;
+      }
     }
 
     // Sort sizes by weight
@@ -216,7 +231,7 @@ ${g.items
   })
   .map((item) => `    <div class="item">
       <div class="checkbox"></div>
-      <div class="item-name">${item.name}${item.isManual ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M</span>' : ''}</div>
+      <div class="item-name">${item.name}${item.hasManual && item.hasImported ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M+I</span>' : item.hasManual ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M</span>' : ''}</div>
       <div class="item-qty">×${item.qty}</div>
       <div class="item-weight">${formatWeight(item.totalLbs, units)}</div>
     </div>`).join('\n')}
@@ -258,28 +273,6 @@ ${g.items
       pickSort = { field, dir: pickSort.dir === 'asc' ? 'desc' : 'asc' };
     } else {
       pickSort = { field, dir: 'asc' };
-    }
-  }
-
-  async function deleteOrder(orderId: string) {
-    if (!confirm('Remove this order from the production day?')) return;
-
-    try {
-      const res = await fetch(`/api/orders?id=${orderId}`, {
-        method: 'DELETE'
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || 'Failed to delete order');
-        return;
-      }
-
-      // Close modal to trigger parent refresh
-      onClose();
-    } catch (err) {
-      console.error('Delete order error:', err);
-      alert('Failed to delete order');
     }
   }
 </script>
@@ -359,19 +352,14 @@ ${g.items
                 <div class="checkbox"></div>
                 <div class="item-name">
                   {item.name}
-                  {#if item.isManual}
+                  {#if item.hasManual && item.hasImported}
+                    <span class="manual-badge" title="Contains both manual and imported orders">M+I</span>
+                  {:else if item.hasManual}
                     <span class="manual-badge" title="Manually added">M</span>
                   {/if}
                 </div>
                 <div class="item-qty">×{item.qty}</div>
                 <div class="item-weight">{formatWeight(item.totalLbs, units)}</div>
-                <button
-                  class="delete-order-btn"
-                  onclick={() => deleteOrder(item.orderId)}
-                  title="Remove from production day"
-                >
-                  ×
-                </button>
               </div>
             {/each}
             <div class="group-total">
@@ -620,11 +608,6 @@ ${g.items
     gap: 12px;
     padding: 5px 0;
     border-bottom: 1px solid #d8d4bc;
-    position: relative;
-  }
-
-  .pick-item:hover .delete-order-btn {
-    opacity: 1;
   }
 
   .checkbox {
@@ -705,21 +688,5 @@ ${g.items
     font-weight: 700;
     margin-left: 6px;
     vertical-align: middle;
-  }
-
-  .delete-order-btn {
-    background: none;
-    border: none;
-    color: #6b7360;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
-  }
-
-  .delete-order-btn:hover {
-    color: #d9534f;
   }
 </style>
