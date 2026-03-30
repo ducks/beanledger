@@ -228,7 +228,7 @@
       stats = {
         total: data.total,
         matched: data.matches.filter((m: MatchResult) => m.confidence === 'exact').length,
-        fuzzy: data.matches.filter((m: MatchResult) => m.confidence === 'fuzzy').length,
+        fuzzy: 0,
         unmatched: data.unmatched
       };
     } catch (err) {
@@ -321,12 +321,6 @@
           <span class="label">Matched:</span>
           <span class="value">{stats.matched}</span>
         </div>
-        {#if stats.fuzzy > 0}
-          <div class="stat warning">
-            <span class="label">Fuzzy:</span>
-            <span class="value">{stats.fuzzy}</span>
-          </div>
-        {/if}
         {#if stats.unmatched > 0}
           <div class="stat error">
             <span class="label">Unmatched:</span>
@@ -466,26 +460,7 @@
                 <td>{match.productName}</td>
                 <td>{match.quantity}</td>
                 <td>
-                  {#if match.confidence === 'fuzzy'}
-                    <select
-                      class="match-select"
-                      value={manualMatches[match.productName] || match.matchedProduct?.id || ''}
-                      onchange={(e) => {
-                        const target = e.target as HTMLSelectElement;
-                        manualMatches[match.productName] = target.value;
-                      }}
-                    >
-                      {#if match.matchedProduct}
-                        <option value={match.matchedProduct.id}>{match.matchedProduct.name} (suggested)</option>
-                      {/if}
-                      <option value="">-- Select product --</option>
-                      {#each products as product}
-                        {#if product.id !== match.matchedProduct?.id}
-                          <option value={product.id}>{product.name}</option>
-                        {/if}
-                      {/each}
-                    </select>
-                  {:else if match.matchedProduct}
+                  {#if match.matchedProduct}
                     {match.matchedProduct.name}
                   {:else}
                     <em>No match found</em>
@@ -493,11 +468,9 @@
                 </td>
                 <td>
                   {#if match.confidence === 'exact'}
-                    <span class="badge success">Exact</span>
-                  {:else if match.confidence === 'fuzzy'}
-                    <span class="badge warning">Fuzzy - Review</span>
+                    <span class="badge success">Matched</span>
                   {:else}
-                    <span class="badge error">None</span>
+                    <span class="badge error">Not Found</span>
                   {/if}
                 </td>
               </tr>
@@ -513,8 +486,8 @@
           </p>
         {/if}
 
-        <button type="button" onclick={handleConfirm} disabled={loading || stats.matched + stats.fuzzy === 0}>
-          Import {stats.matched + stats.fuzzy} Order{stats.matched + stats.fuzzy !== 1 ? 's' : ''}
+        <button type="button" onclick={handleConfirm} disabled={loading || stats.matched === 0}>
+          Import {stats.matched} Order{stats.matched !== 1 ? 's' : ''}
         </button>
         <button type="button" onclick={() => preview = null} disabled={loading}>
           Cancel
@@ -666,10 +639,6 @@
   tr.none {
     background: #f6f4eb;
     color: #6b7360;
-  }
-
-  tr.fuzzy {
-    background: #fcf9ec;
   }
 
   .badge {
@@ -886,22 +855,5 @@
 
   .text-input::placeholder {
     color: #6b7360;
-  }
-
-  .match-select {
-    width: 100%;
-    padding: 0.5rem;
-    border: 2px solid #f0e8d4;
-    border-radius: 4px;
-    background: #fcf9ec;
-    color: #231f20;
-    font-size: 0.85rem;
-    font-family: var(--font-family);
-    cursor: pointer;
-  }
-
-  .match-select:focus {
-    outline: none;
-    border-color: #b29244;
   }
 </style>
