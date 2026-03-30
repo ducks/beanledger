@@ -1,6 +1,6 @@
 {
   "name": "beanledger",
-  "version": "2026.03.25.1",
+  "version": "2026.03.30.0",
   "private": true,
   "type": "module",
   "scripts": {
