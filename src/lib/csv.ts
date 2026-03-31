@@ -104,10 +104,9 @@ export function parseOrderCsv(csvText: string): CsvRow[] {
       const productName = match[1];
       const quantity = parseInt(match[2], 10);
 
-      // Skip non-product rows (discounts, subscriptions, etc)
+      // Skip non-product rows (discounts, etc)
       if (
         productName.includes('DISCOUNT') ||
-        productName.includes('Subscription') ||
         productName.includes('Additional')
       ) {
         continue;
