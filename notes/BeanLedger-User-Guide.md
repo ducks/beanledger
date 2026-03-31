@@ -247,7 +247,7 @@ The system rounds to batch sizes to minimize waste:
 ### Viewing Individual Products
 
 Each roast group card can expand to show individual orders:
-1. Click the toggle arrow (▶) next to product count
+1. Click the toggle arrow (>) next to product count
 2. View list of all products in that group
 3. See quantities and weights
 4. Manual orders marked with "M" badge
@@ -364,7 +364,7 @@ Wholesale Morning Blend 5lb,8
 ### Importing Orders
 
 1. Navigate to desired production date
-2. Click **CSV Import** button (📄 icon)
+2. Click **CSV Import** button
 3. Click **Choose File** or drag-and-drop CSV
 4. Review preview:
    - Matched products shown in green
@@ -418,7 +418,7 @@ Use when you have individual orders outside your CSV import system.
 ### Deleting Individual Orders
 
 **From Roast Planner:**
-1. Expand roast group product list (click ▶)
+1. Expand roast group product list (click >)
 2. Hover over order to delete
 3. Click × button that appears
 4. Confirm deletion
@@ -698,7 +698,7 @@ For technical issues or feature requests, contact your system administrator.
 | Update leftover | Click leftover field → Enter amount → Press Enter |
 | Generate pick list | Click Pick List button |
 | Save snapshot | Reports → Save Snapshot |
-| Import CSV | 📄 icon → Choose file → Import |
+| Import CSV | CSV Import → Choose file → Import |
 | Create override | Batch Overrides → Select type → Enter weight → Save |
 
 ### Status Indicators
@@ -710,8 +710,8 @@ For technical issues or feature requests, contact your system administrator.
 | Green highlight | CSV matched product |
 | Red highlight | CSV unmatched product |
 | × button (hover) | Delete order |
-| ▶ arrow | Expand products |
-| ▼ arrow | Collapse products |
+| > arrow | Expand products |
+| v arrow | Collapse products |
 
 ---
 
