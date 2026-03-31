@@ -239,10 +239,22 @@ The system rounds to batch sizes to minimize waste:
 3. Press Enter or click outside
 4. System auto-saves and recalculates
 
+**Predicted Leftover Indicator:**
+When a roast group shows a checkmark icon, it means all orders can be fulfilled entirely from existing leftover stock—no roasting needed for that group.
+
+**Leftover Confirmation Modal:**
+Before finishing a roast day, you'll be prompted to review and confirm leftover amounts:
+1. Modal shows all roast groups with their current leftover values
+2. Groups with reviewed/manually-entered leftovers show a checkmark
+3. You can edit any leftover amount directly in the modal
+4. Click "Confirm and Finish" to save snapshot and complete the day
+5. This ensures accurate leftover tracking for the next production day
+
 **Best Practices:**
 - Update leftovers at end of each production day
 - Account for quality control samples
 - Don't include stale coffee (>7 days old)
+- Review the confirmation modal carefully before finishing the day
 
 ### Viewing Individual Products
 
@@ -307,8 +319,9 @@ The pick list is your roasting schedule for the day.
 **Pick List Organization:**
 - Grouped by roast group
 - Sorted by product name
-- Shows individual orders (not aggregated)
+- Aggregates multiple orders of same product (shows total quantity)
 - Includes batch counts for each group
+- Shows total roast count across all groups at top of batches section
 
 ### Production Reports
 
@@ -374,14 +387,21 @@ Wholesale Morning Blend 5lb,8
 ### Handling Import Errors
 
 **"Product not found" errors:**
-- Product name doesn't match exactly
+- Product name doesn't match exactly (matching is case-sensitive and exact)
 - Product is marked inactive
 - Product doesn't exist in system
 
+**Important:** CSV import uses exact matching only. Product names must match character-for-character including:
+- Spelling
+- Spacing
+- Capitalization
+- Special characters
+
 **Solutions:**
-1. Fix product name in CSV (spelling, spacing, case)
+1. Fix product name in CSV to match exactly
 2. Create missing product in Settings > Products
 3. Activate product if inactive
+4. Use product search in settings to find exact name format
 
 ### Import Batches
 
@@ -505,13 +525,11 @@ Manual orders have no `import_batch_id`, allowing you to:
 
 **Fix**: If manual order incorrectly has import_batch_id, delete and re-add through manual workflow.
 
-### Pick List Shows Aggregated Products
+### Pick List Behavior
 
-**Old behavior**: Pick list combined multiple orders of same product
+**Current behavior**: Pick list aggregates multiple orders of the same product, showing combined quantities.
 
-**New behavior**: Pick list shows individual orders
-
-**If seeing aggregated**: Clear browser cache and refresh
+**If experiencing issues**: Clear browser cache and hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
 
 ### Modal Not Appearing or Styled Incorrectly
 
@@ -526,10 +544,12 @@ Manual orders have no `import_batch_id`, allowing you to:
 
 ### Daily Routine
 1. Start day by reviewing roast planner
-2. Update leftovers from previous day
+2. Update leftovers from previous day (if not done at end of yesterday)
 3. Generate and print pick list
 4. Roast according to plan
-5. End day by saving snapshot and updating tomorrow's leftovers
+5. End day by clicking "Finish Roast Day"
+6. Review leftover confirmation modal and update amounts as needed
+7. Confirm and finish to save production snapshot
 
 ### Data Hygiene
 - Keep product names consistent with order system
