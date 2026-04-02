@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/db';
 import { parseOrderCsv, matchProducts, generateOrderId } from '$lib/csv';
-import type { Product } from '$lib/types';
+import type { Product, ImportAlias } from '$lib/types';
 
 /**
  * POST /api/orders/import
@@ -41,8 +41,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     );
     const products = productsResult.rows;
 
-    // Match CSV rows to products
-    let matches = matchProducts(csvRows, products);
+    // Fetch active import aliases for this tenant
+    const aliasesResult = await query<ImportAlias>(
+      'SELECT * FROM import_aliases WHERE tenant_id = $1 AND active = true',
+      [locals.tenant.id]
+    );
+    const aliases = aliasesResult.rows;
+
+    // Match CSV rows to products (checks aliases too)
+    let matches = matchProducts(csvRows, products, aliases);
 
     // Apply manual overrides if provided
     if (manualMatches && Object.keys(manualMatches).length > 0) {

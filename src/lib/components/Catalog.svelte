@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Product, RoastGroup, GroupType, BatchOverride } from '$lib/types';
+  import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias } from '$lib/types';
 
   let {
     onClose,
@@ -9,15 +9,17 @@
     onUpdate: () => void;
   } = $props();
 
-  let tab = $state<'products' | 'groups'>('products');
+  let tab = $state<'products' | 'groups' | 'aliases'>('products');
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
   let batchTypes = $state<BatchOverride[]>([]);
+  let aliases = $state<ImportAlias[]>([]);
   let loading = $state(true);
   let showGroupForm = $state(false);
   let editingGroup = $state<RoastGroup | null>(null);
   let productSearch = $state('');
   let groupSearch = $state('');
+  let aliasSearch = $state('');
 
   // Roast group form state
   let formId = $state('');
@@ -25,6 +27,12 @@
   let formBatchType = $state('');
   let formRoastLossPct = $state(0);
   let formType = $state<GroupType>('blend');
+
+  // Alias form state
+  let showAliasForm = $state(false);
+  let editingAlias = $state<ImportAlias | null>(null);
+  let aliasFormName = $state('');
+  let aliasFormProductId = $state('');
 
   // Product form state
   let showProductForm = $state(false);
@@ -50,6 +58,19 @@
       : products
   );
 
+  const filteredAliases = $derived(
+    aliasSearch.trim()
+      ? aliases.filter(a => {
+          const query = aliasSearch.toLowerCase();
+          const productName = products.find(p => p.id === a.product_id)?.name.toLowerCase() || '';
+          return (
+            a.alias_name.toLowerCase().includes(query) ||
+            productName.includes(query)
+          );
+        })
+      : aliases
+  );
+
   const filteredGroups = $derived(
     groupSearch.trim()
       ? groups.filter(g => {
@@ -67,14 +88,16 @@
   async function loadData() {
     loading = true;
     try {
-      const [productsRes, groupsRes, batchTypesRes] = await Promise.all([
+      const [productsRes, groupsRes, batchTypesRes, aliasesRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/groups'),
-        fetch('/api/batch-overrides')
+        fetch('/api/batch-overrides'),
+        fetch('/api/aliases')
       ]);
       products = await productsRes.json();
       groups = await groupsRes.json();
       batchTypes = await batchTypesRes.json();
+      aliases = await aliasesRes.json();
 
       // Set first batch type as default if available
       if (batchTypes.length > 0 && !formBatchType) {
@@ -225,6 +248,62 @@
     onUpdate();
     closeProductForm();
   }
+  // Alias CRUD
+  function openCreateAliasForm() {
+    editingAlias = null;
+    aliasFormName = '';
+    aliasFormProductId = '';
+    showAliasForm = true;
+  }
+
+  function openEditAliasForm(alias: ImportAlias) {
+    editingAlias = alias;
+    aliasFormName = alias.alias_name;
+    aliasFormProductId = alias.product_id;
+    showAliasForm = true;
+  }
+
+  function closeAliasForm() {
+    showAliasForm = false;
+    editingAlias = null;
+  }
+
+  async function saveAlias() {
+    const aliasData = {
+      id: editingAlias?.id ?? `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      alias_name: aliasFormName,
+      product_id: aliasFormProductId,
+      active: editingAlias?.active ?? true
+    };
+
+    const method = editingAlias ? 'PUT' : 'POST';
+    await fetch('/api/aliases', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(aliasData)
+    });
+
+    await loadData();
+    onUpdate();
+    closeAliasForm();
+  }
+
+  async function deleteAlias(id: string) {
+    if (!confirm('Delete this alias?')) return;
+    await fetch(`/api/aliases?id=${id}`, { method: 'DELETE' });
+    await loadData();
+    onUpdate();
+  }
+
+  async function toggleAliasActive(alias: ImportAlias) {
+    await fetch('/api/aliases', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...alias, active: !alias.active })
+    });
+    await loadData();
+    onUpdate();
+  }
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
@@ -248,6 +327,13 @@
         onclick={() => (tab = 'groups')}
       >
         Roast Groups ({groups.length})
+      </button>
+      <button
+        class="tab"
+        class:active={tab === 'aliases'}
+        onclick={() => (tab = 'aliases')}
+      >
+        Aliases ({aliases.length})
       </button>
     </div>
 
@@ -305,7 +391,7 @@
             </tbody>
           </table>
         </div>
-      {:else}
+      {:else if tab === 'groups'}
         <div class="section-header">
           <div class="section-title">Roast Groups</div>
           <input
@@ -360,10 +446,105 @@
             </tbody>
           </table>
         </div>
+      {:else if tab === 'aliases'}
+        <div class="section-header">
+          <div class="section-title">Import Aliases</div>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search aliases..."
+            bind:value={aliasSearch}
+          />
+          <button class="add-button" onclick={openCreateAliasForm}>+ Add Alias</button>
+        </div>
+        <p class="aliases-description">
+          Map CSV product names to existing products. Useful for rotating subscriptions
+          where the same name (e.g., "Single Origin Subscription") should resolve to a
+          different product each week.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>CSV Name</th>
+                <th>Maps To</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each filteredAliases as alias}
+                <tr class:inactive={!alias.active}>
+                  <td>{alias.alias_name}</td>
+                  <td>{products.find(p => p.id === alias.product_id)?.name || '—'}</td>
+                  <td>
+                    <button
+                      class="status-toggle"
+                      onclick={() => toggleAliasActive(alias)}
+                    >
+                      {alias.active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="edit-button" onclick={() => openEditAliasForm(alias)}>
+                        Edit
+                      </button>
+                      <button class="delete-button" onclick={() => deleteAlias(alias.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       {/if}
     </div>
   </div>
 </div>
+
+{#if showAliasForm}
+  <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeAliasForm()}>
+    <div class="form-modal">
+      <div class="form-header">
+        <div class="form-title">{editingAlias ? 'Edit' : 'Create'} Import Alias</div>
+        <button class="close-button" onclick={closeAliasForm}>&times;</button>
+      </div>
+
+      <div class="form-body">
+        <div class="form-group">
+          <label>CSV Product Name</label>
+          <input
+            type="text"
+            bind:value={aliasFormName}
+            placeholder="e.g., Single Origin Subscription"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Maps To Product</label>
+          <select bind:value={aliasFormProductId}>
+            <option value="">Select a product</option>
+            {#each products.filter(p => p.active) as product}
+              <option value={product.id}>
+                {product.name} ({groups.find(g => g.id === product.group_id)?.label || '—'})
+              </option>
+            {/each}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button class="cancel-button" onclick={closeAliasForm}>Cancel</button>
+        <button class="save-button" onclick={saveAlias} disabled={!aliasFormName || !aliasFormProductId}>
+          {editingAlias ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if showGroupForm}
   <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeGroupForm()}>
@@ -621,6 +802,13 @@
 
   .add-button:hover {
     background: #9d7d37;
+  }
+
+  .aliases-description {
+    font-size: 11px;
+    color: #6b7360;
+    margin: -8px 0 16px 0;
+    line-height: 1.5;
   }
 
   .table-container {

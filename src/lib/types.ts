@@ -38,6 +38,7 @@ export interface Order {
 export interface Leftover {
   group_id: string;
   lbs: number;
+  tenant_id: string;
 }
 
 export interface BatchOverride {
@@ -50,6 +51,14 @@ export interface ProductionSummary {
   production_date: string;
   summary: any;
   saved_at: string;
+}
+
+export interface ImportAlias {
+  id: string;
+  alias_name: string;
+  product_id: string;
+  active: boolean;
+  created_at: string;
 }
 
 // Auth types
