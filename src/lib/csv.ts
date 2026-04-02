@@ -1,4 +1,4 @@
-import type { Product } from './types';
+import type { Product, ImportAlias } from './types';
 
 export interface CsvRow {
   productName: string;
@@ -9,7 +9,7 @@ export interface MatchResult {
   productName: string;
   quantity: number;
   matchedProduct: Product | null;
-  confidence: 'exact' | 'fuzzy' | 'none';
+  confidence: 'exact' | 'alias' | 'fuzzy' | 'none';
 }
 
 /**
@@ -120,14 +120,18 @@ export function parseOrderCsv(csvText: string): CsvRow[] {
 }
 
 /**
- * Match CSV rows to products from database
+ * Match CSV rows to products from database.
+ * Checks exact product name match first, then active import aliases.
  */
 export function matchProducts(
   csvRows: CsvRow[],
-  products: Product[]
+  products: Product[],
+  aliases: ImportAlias[] = []
 ): MatchResult[] {
+  const activeAliases = aliases.filter(a => a.active);
+
   return csvRows.map((row) => {
-    // Try exact match only
+    // Try exact product name match first
     const exactMatch = products.find(
       (p) => p.name.toLowerCase() === row.productName.toLowerCase()
     );
@@ -139,6 +143,23 @@ export function matchProducts(
         matchedProduct: exactMatch,
         confidence: 'exact'
       };
+    }
+
+    // Try alias match
+    const aliasMatch = activeAliases.find(
+      (a) => a.alias_name.toLowerCase() === row.productName.toLowerCase()
+    );
+
+    if (aliasMatch) {
+      const aliasedProduct = products.find(p => p.id === aliasMatch.product_id);
+      if (aliasedProduct) {
+        return {
+          productName: row.productName,
+          quantity: row.quantity,
+          matchedProduct: aliasedProduct,
+          confidence: 'alias'
+        };
+      }
     }
 
     // No match found - allow user to add product

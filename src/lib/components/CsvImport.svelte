@@ -227,7 +227,7 @@
       preview = data.matches;
       stats = {
         total: data.total,
-        matched: data.matches.filter((m: MatchResult) => m.confidence === 'exact').length,
+        matched: data.matches.filter((m: MatchResult) => m.confidence === 'exact' || m.confidence === 'alias').length,
         fuzzy: 0,
         unmatched: data.unmatched
       };
@@ -469,6 +469,8 @@
                 <td>
                   {#if match.confidence === 'exact'}
                     <span class="badge success">Matched</span>
+                  {:else if match.confidence === 'alias'}
+                    <span class="badge success">Alias</span>
                   {:else}
                     <span class="badge error">Not Found</span>
                   {/if}
@@ -634,6 +636,10 @@
     padding: 0.75rem;
     border-bottom: 1px solid #d8d4bc;
     color: #231f20;
+  }
+
+  tr.alias {
+    background: #f6f4eb;
   }
 
   tr.none {
