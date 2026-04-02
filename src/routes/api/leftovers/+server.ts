@@ -140,7 +140,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const result = await query(
     `INSERT INTO leftovers (group_id, lbs, tenant_id)
      VALUES ($1, $2, $3)
-     ON CONFLICT (group_id) DO UPDATE SET lbs = $2, updated_at = CURRENT_TIMESTAMP
+     ON CONFLICT (group_id, tenant_id) DO UPDATE SET lbs = $2, updated_at = CURRENT_TIMESTAMP
      RETURNING *`,
     [leftover.group_id, leftover.lbs, locals.tenant.id]
   );
