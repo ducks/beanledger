@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import Catalog from './Catalog.svelte';
+  import Settings from './Settings.svelte';
 
   interface ProductionDay {
     production_date: string;
@@ -15,6 +17,9 @@
   let showNewDayModal = $state(false);
   let newDayDate = $state(new Date().toISOString().slice(0, 10));
   let activeDay: ProductionDay | null = $state(null);
+  let showCatalog = $state(false);
+  let showSettings = $state(false);
+  let units = $state<'lbs' | 'kg'>('lbs');
 
   onMount(async () => {
     await loadDays();
@@ -162,9 +167,17 @@
 <div class="dashboard">
   <header>
     <h1>BeanLedger</h1>
-    <button class="primary-button" onclick={startNewDay} disabled={loading}>
-      + Start New Roast Day
-    </button>
+    <div class="header-actions">
+      <button class="action-button" onclick={() => showCatalog = true}>
+        ⚙ Catalog
+      </button>
+      <button class="action-button" onclick={() => showSettings = true}>
+        ⚙ Settings
+      </button>
+      <button class="primary-button" onclick={startNewDay} disabled={loading}>
+        + Start New Roast Day
+      </button>
+    </div>
   </header>
 
   {#if error}
@@ -268,6 +281,21 @@
   </div>
 {/if}
 
+{#if showCatalog}
+  <Catalog
+    onClose={() => (showCatalog = false)}
+    onUpdate={() => {}}
+  />
+{/if}
+
+{#if showSettings}
+  <Settings
+    {units}
+    onClose={() => (showSettings = false)}
+    onUnitsChange={(newUnits) => (units = newUnits)}
+  />
+{/if}
+
 <style>
   .dashboard {
     max-width: 1200px;
@@ -286,6 +314,30 @@
     color: #231f20;
     font-size: 2rem;
     margin: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .action-button {
+    padding: 5px 14px;
+    background: #231f20;
+    border: 1px solid #231f20;
+    border-radius: 5px;
+    color: #f6f4eb;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    white-space: nowrap;
+  }
+
+  .action-button:hover {
+    background: #3a3536;
+    border-color: #3a3536;
   }
 
   .primary-button {
