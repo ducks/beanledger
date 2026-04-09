@@ -82,12 +82,12 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: #d8d4bc;
+    background: var(--border-subtle);
   }
 
   .login-card {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 2rem;
     width: 100%;
@@ -98,13 +98,13 @@
   h1 {
     margin: 0 0 0.5rem 0;
     font-size: 2rem;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .subtitle {
     margin: 0 0 2rem 0;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 0.9rem;
   }
 
@@ -116,36 +116,36 @@
     display: block;
     margin-bottom: 0.25rem;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
   }
 
   input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 1rem;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-family: var(--font-family);
   }
 
   input:focus {
     outline: none;
-    border-color: #b29244;
+    border-color: var(--accent);
   }
 
   input:disabled {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
     cursor: not-allowed;
   }
 
   button {
     width: 100%;
     padding: 0.75rem;
-    background: #231f20;
-    color: #f6f4eb;
-    border: 1px solid #231f20;
+    background: var(--text);
+    color: var(--bg);
+    border: 1px solid var(--text);
     border-radius: 4px;
     font-size: 1rem;
     font-weight: 600;
@@ -155,8 +155,8 @@
   }
 
   button:hover:not(:disabled) {
-    background: #3a3536;
-    border-color: #3a3536;
+    background: var(--button-dark-hover);
+    border-color: var(--button-dark-hover);
   }
 
   button:disabled {
@@ -165,10 +165,10 @@
   }
 
   .error {
-    background: #f7e6e4;
-    color: #b75742;
+    background: var(--danger-bg);
+    color: var(--danger);
     padding: 0.75rem;
-    border: 1px solid #d8afa7;
+    border: 1px solid var(--danger-border);
     border-radius: 4px;
     margin-bottom: 1rem;
     font-size: 0.9rem;
@@ -177,11 +177,11 @@
   .signup-link {
     text-align: center;
     margin-top: 1.5rem;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .signup-link a {
-    color: #b29244;
+    color: var(--accent);
     text-decoration: none;
     font-weight: 600;
   }

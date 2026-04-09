@@ -119,8 +119,8 @@
 
 <style>
   .import-history {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -129,14 +129,14 @@
   h3 {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
-    color: #231f20;
+    color: var(--text);
   }
 
   .error {
-    background: #f7e6e4;
-    color: #b75742;
+    background: var(--danger-bg);
+    color: var(--danger);
     padding: 0.75rem;
-    border: 1px solid #d8afa7;
+    border: 1px solid var(--danger-border);
     border-radius: 4px;
     font-size: 0.9rem;
     margin-bottom: 1rem;
@@ -152,8 +152,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.75rem 1rem;
   }
@@ -164,20 +164,20 @@
 
   .import-filename {
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     margin-bottom: 0.25rem;
   }
 
   .import-meta {
     font-size: 0.85rem;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .delete-button {
     padding: 0.5rem 1rem;
-    background: #b75742;
-    color: #f6f4eb;
-    border: 1px solid #b75742;
+    background: var(--danger);
+    color: var(--bg);
+    border: 1px solid var(--danger);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.85rem;
@@ -186,8 +186,8 @@
   }
 
   .delete-button:hover:not(:disabled) {
-    background: #9d4836;
-    border-color: #9d4836;
+    background: var(--danger-hover);
+    border-color: var(--danger-hover);
   }
 
   .delete-button:disabled {

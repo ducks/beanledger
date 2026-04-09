@@ -214,6 +214,15 @@
     closeGroupForm();
   }
 
+  function openCreateProductForm() {
+    editingProduct = null;
+    productFormId = '';
+    productFormName = '';
+    productFormLbs = 0;
+    productFormGroupId = '';
+    showProductForm = true;
+  }
+
   function openEditProductForm(product: Product) {
     editingProduct = product;
     productFormId = product.id;
@@ -230,7 +239,7 @@
 
   async function saveProduct() {
     const productData = {
-      id: productFormId,
+      id: editingProduct ? productFormId : `p${Date.now()}`,
       name: productFormName,
       lbs: productFormLbs,
       group_id: productFormGroupId,
@@ -238,8 +247,9 @@
       created_at: editingProduct?.created_at ?? new Date().toISOString().slice(0, 10)
     };
 
+    const method = editingProduct ? 'PUT' : 'POST';
     await fetch('/api/products', {
-      method: 'PUT',
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
@@ -349,7 +359,7 @@
             placeholder="Search products..."
             bind:value={productSearch}
           />
-          <a href="/products/new" class="add-button">+ Add Product</a>
+          <button class="add-button" onclick={openCreateProductForm}>+ Add Product</button>
         </div>
         <div class="table-container">
           <table>
@@ -618,24 +628,26 @@
   </div>
 {/if}
 
-<!-- Product Edit Form Modal -->
+<!-- Product Form Modal -->
 {#if showProductForm}
   <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeProductForm()}>
     <div class="form-modal">
       <div class="form-header">
-        <div class="form-title">Edit Product</div>
+        <div class="form-title">{editingProduct ? 'Edit' : 'Create'} Product</div>
         <button class="close-button" onclick={closeProductForm}>×</button>
       </div>
 
       <div class="form-body">
-        <div class="form-group">
-          <label>ID</label>
-          <input
-            type="text"
-            bind:value={productFormId}
-            disabled={true}
-          />
-        </div>
+        {#if editingProduct}
+          <div class="form-group">
+            <label>ID</label>
+            <input
+              type="text"
+              bind:value={productFormId}
+              disabled={true}
+            />
+          </div>
+        {/if}
 
         <div class="form-group">
           <label>Name</label>
@@ -670,7 +682,13 @@
 
       <div class="form-footer">
         <button class="cancel-button" onclick={closeProductForm}>Cancel</button>
-        <button class="save-button" onclick={saveProduct}>Update</button>
+        <button
+          class="save-button"
+          onclick={saveProduct}
+          disabled={!productFormName || !productFormLbs || !productFormGroupId}
+        >
+          {editingProduct ? 'Update' : 'Create'}
+        </button>
       </div>
     </div>
   </div>
@@ -688,8 +706,8 @@
   }
 
   .modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 900px;
     max-height: 88vh;
@@ -700,7 +718,7 @@
 
   .modal-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -708,26 +726,26 @@
 
   .modal-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .close-button {
     background: none;
     border: none;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
     line-height: 1;
   }
 
   .close-button:hover {
-    color: #231f20;
+    color: var(--text);
   }
 
   .tabs {
     display: flex;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
   }
 
   .tab {
@@ -735,7 +753,7 @@
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -743,8 +761,8 @@
   }
 
   .tab.active {
-    color: #b29244;
-    border-bottom-color: #b29244;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
   }
 
   .modal-body {
@@ -756,7 +774,7 @@
   .loading {
     text-align: center;
     padding: 40px;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .section-header {
@@ -769,7 +787,7 @@
 
   .section-title {
     font-size: 13px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -778,35 +796,38 @@
   .search-input {
     flex: 1;
     padding: 6px 12px;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #231f20;
+    color: var(--text);
     font-family: var(--font-family);
     font-size: 12px;
   }
 
   .search-input::placeholder {
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .add-button {
     padding: 6px 12px;
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
     text-decoration: none;
+    border: none;
     border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
   }
 
   .add-button:hover {
-    background: #9d7d37;
+    background: var(--accent-hover);
   }
 
   .aliases-description {
     font-size: 11px;
-    color: #6b7360;
+    color: var(--text-muted);
     margin: -8px 0 16px 0;
     line-height: 1.5;
   }
@@ -822,12 +843,12 @@
   }
 
   th {
-    background: #f6f4eb;
+    background: var(--bg);
     padding: 10px;
     text-align: left;
-    border-bottom: 2px solid #c8c4a8;
+    border-bottom: 2px solid var(--border);
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     text-transform: uppercase;
     font-size: 10px;
     letter-spacing: 0.05em;
@@ -835,8 +856,8 @@
 
   td {
     padding: 10px;
-    border-bottom: 1px solid #d8d4bc;
-    color: #231f20;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text);
   }
 
   tr.inactive {
@@ -844,22 +865,22 @@
   }
 
   tr:hover {
-    background: #f6f4eb;
+    background: var(--bg);
   }
 
   .status-toggle {
     padding: 4px 10px;
-    background: #b29244;
+    background: var(--accent);
     border: none;
     border-radius: 3px;
-    color: #f6f4eb;
+    color: var(--bg);
     font-size: 10px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .status-toggle:hover {
-    background: #9d7d37;
+    background: var(--accent-hover);
   }
 
   .action-buttons {
@@ -870,33 +891,33 @@
   .edit-button {
     padding: 4px 10px;
     background: none;
-    border: 1px solid #b29244;
+    border: 1px solid var(--accent);
     border-radius: 3px;
-    color: #b29244;
+    color: var(--accent);
     font-size: 10px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .edit-button:hover {
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
   }
 
   .delete-button {
     padding: 4px 10px;
     background: none;
-    border: 1px solid #b75742;
+    border: 1px solid var(--danger);
     border-radius: 3px;
-    color: #b75742;
+    color: var(--danger);
     font-size: 10px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .delete-button:hover {
-    background: #b75742;
-    color: #f6f4eb;
+    background: var(--danger);
+    color: var(--bg);
   }
 
   /* Form Modal Styles */
@@ -911,8 +932,8 @@
   }
 
   .form-modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 500px;
     max-height: 90vh;
@@ -923,7 +944,7 @@
 
   .form-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -931,7 +952,7 @@
 
   .form-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
@@ -949,7 +970,7 @@
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 6px;
@@ -959,17 +980,17 @@
   .form-group select {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-family: var(--font-family);
     font-size: 13px;
   }
 
   .form-group input:disabled {
-    background: #ddd9c4;
-    color: #6b7360;
+    background: var(--bg-sunken);
+    color: var(--text-muted);
     cursor: not-allowed;
   }
 
@@ -984,15 +1005,15 @@
     gap: 8px;
     justify-content: flex-end;
     padding: 16px 20px;
-    border-top: 1px solid #c8c4a8;
+    border-top: 1px solid var(--border);
   }
 
   .save-button {
     padding: 8px 16px;
-    background: #b29244;
+    background: var(--accent);
     border: none;
     border-radius: 4px;
-    color: #f6f4eb;
+    color: var(--bg);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -1000,21 +1021,21 @@
   }
 
   .save-button:hover {
-    background: #9d7d37;
+    background: var(--accent-hover);
   }
 
   .cancel-button {
     padding: 8px 16px;
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 12px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .cancel-button:hover {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
   }
 </style>

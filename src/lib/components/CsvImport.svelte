@@ -501,8 +501,8 @@
 
 <style>
   .csv-import {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -511,7 +511,7 @@
   h3 {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
-    color: #231f20;
+    color: var(--text);
   }
 
   .upload-section {
@@ -522,26 +522,26 @@
 
   .or-divider {
     text-align: center;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 0.9rem;
   }
 
   textarea {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-family: monospace;
     font-size: 0.9rem;
   }
 
   button {
     padding: 0.75rem 1rem;
-    background: #231f20;
-    color: #f6f4eb;
-    border: 1px solid #231f20;
+    background: var(--text);
+    color: var(--bg);
+    border: 1px solid var(--text);
     border-radius: 4px;
     cursor: pointer;
     font-size: 1rem;
@@ -550,8 +550,8 @@
   }
 
   button:hover:not(:disabled) {
-    background: #3a3536;
-    border-color: #3a3536;
+    background: var(--button-dark-hover);
+    border-color: var(--button-dark-hover);
   }
 
   button:disabled {
@@ -560,10 +560,10 @@
   }
 
   .error {
-    background: #f7e6e4;
-    color: #b75742;
+    background: var(--danger-bg);
+    color: var(--danger);
     padding: 0.75rem;
-    border: 1px solid #d8afa7;
+    border: 1px solid var(--danger-border);
     border-radius: 4px;
     font-size: 0.9rem;
   }
@@ -571,7 +571,7 @@
   .preview-section {
     margin-top: 2rem;
     padding-top: 2rem;
-    border-top: 1px solid #c8c4a8;
+    border-top: 1px solid var(--border);
   }
 
   .stats {
@@ -582,12 +582,12 @@
   }
 
   .stat {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
     padding: 0.5rem 1rem;
     border-radius: 4px;
     display: flex;
     gap: 0.5rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
   }
 
   .stat.success {
@@ -597,15 +597,15 @@
   }
 
   .stat.warning {
-    background: #f0e8d4;
+    background: var(--bg-accent);
     color: #8b6914;
     border-color: #d4c49c;
   }
 
   .stat.error {
-    background: #f7e6e4;
-    color: #b75742;
-    border-color: #d8afa7;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger-border);
   }
 
   .stat .label {
@@ -624,27 +624,27 @@
   }
 
   th {
-    background: #d8d4bc;
+    background: var(--border-subtle);
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 2px solid #c8c4a8;
-    color: #231f20;
+    border-bottom: 2px solid var(--border);
+    color: var(--text);
     font-weight: 600;
   }
 
   td {
     padding: 0.75rem;
-    border-bottom: 1px solid #d8d4bc;
-    color: #231f20;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text);
   }
 
   tr.alias {
-    background: #f6f4eb;
+    background: var(--bg);
   }
 
   tr.none {
-    background: #f6f4eb;
-    color: #6b7360;
+    background: var(--bg);
+    color: var(--text-muted);
   }
 
   .badge {
@@ -662,13 +662,13 @@
   }
 
   .badge.warning {
-    background: #f0e8d4;
+    background: var(--bg-accent);
     color: #8b6914;
   }
 
   .badge.error {
-    background: #f7e6e4;
-    color: #b75742;
+    background: var(--danger-bg);
+    color: var(--danger);
   }
 
   .actions {
@@ -678,13 +678,13 @@
   }
 
   .warning-text {
-    color: #b75742;
+    color: var(--danger);
     margin: 0;
     flex: 1;
   }
 
   .unmatched-section {
-    background: #f0e8d4;
+    background: var(--bg-accent);
     border: 1px solid #d4c49c;
     border-radius: 4px;
     padding: 1rem;
@@ -701,12 +701,12 @@
   .help-text {
     margin: 0 0 1rem 0;
     font-size: 0.85rem;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .unmatched-product {
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.75rem;
     margin-bottom: 0.75rem;
@@ -724,12 +724,12 @@
   }
 
   .qty-badge {
-    background: #d8d4bc;
+    background: var(--border-subtle);
     padding: 0.25rem 0.5rem;
     border-radius: 3px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
   }
 
   .product-actions {
@@ -750,46 +750,46 @@
   }
 
   .btn-add {
-    background: #b29244;
-    color: #f6f4eb;
-    border: 1px solid #b29244;
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
   }
 
   .btn-add:hover {
-    background: #9a7d38;
-    border-color: #9a7d38;
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 
   .btn-ignore {
-    background: #6b7360;
-    color: #f6f4eb;
-    border: 1px solid #6b7360;
+    background: var(--muted-green);
+    color: var(--bg);
+    border: 1px solid var(--muted-green);
   }
 
   .btn-ignore:hover {
-    background: #5a6150;
-    border-color: #5a6150;
+    background: var(--muted-green-hover);
+    border-color: var(--muted-green-hover);
   }
 
   .btn-confirm {
-    background: #b29244;
-    color: #f6f4eb;
-    border: 1px solid #b29244;
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
   }
 
   .btn-confirm:hover {
-    background: #9a7d38;
-    border-color: #9a7d38;
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 
   .btn-cancel {
-    background: #ddd9c4;
-    color: #231f20;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-sunken);
+    color: var(--text);
+    border: 1px solid var(--border);
   }
 
   .btn-cancel:hover {
-    background: #d8d4bc;
+    background: var(--border-subtle);
     border-color: #b8b4a0;
   }
 
@@ -818,10 +818,10 @@
   .weight-input,
   .group-select {
     padding: 0.5rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #eae8d8;
-    color: #231f20;
+    background: var(--bg-raised);
+    color: var(--text);
     font-size: 0.9rem;
     font-family: var(--font-family);
   }
@@ -832,8 +832,8 @@
   }
 
   .new-group-form {
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.75rem;
     margin-bottom: 0.75rem;
@@ -842,7 +842,7 @@
   .new-group-form h5 {
     margin: 0 0 0.75rem 0;
     font-size: 0.9rem;
-    color: #231f20;
+    color: var(--text);
     font-weight: 600;
   }
 
@@ -850,16 +850,16 @@
   .select-input,
   .number-input {
     padding: 0.5rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #eae8d8;
-    color: #231f20;
+    background: var(--bg-raised);
+    color: var(--text);
     font-size: 0.9rem;
     width: 100%;
     font-family: var(--font-family);
   }
 
   .text-input::placeholder {
-    color: #6b7360;
+    color: var(--text-muted);
   }
 </style>
