@@ -1,8 +1,27 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import type { LayoutData } from './$types';
 
   export let data: LayoutData;
+
+  let theme: 'light' | 'dark' = 'light';
+
+  onMount(() => {
+    const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (stored) {
+      theme = stored;
+    } else {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+  });
+
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -22,6 +41,9 @@
         {/if}
       </div>
       <div class="user-menu">
+        <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
         <span class="username">{data.user.username}</span>
         <button onclick={handleLogout}>Log out</button>
       </div>
@@ -242,5 +264,20 @@
   button:hover {
     background: var(--button-dark-hover);
     border-color: var(--button-dark-hover);
+  }
+
+  .theme-toggle {
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .theme-toggle:hover {
+    background: var(--bg-sunken);
+    color: var(--text);
+    border-color: var(--border);
   }
 </style>
