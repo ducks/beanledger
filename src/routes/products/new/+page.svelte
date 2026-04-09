@@ -148,18 +148,18 @@
   h1 {
     font-size: 28px;
     font-weight: 700;
-    color: #b29244;
+    color: var(--accent);
     margin: 0;
   }
 
   .back-link {
-    color: #6b7360;
+    color: var(--text-muted);
     text-decoration: none;
     font-size: 14px;
   }
 
   .back-link:hover {
-    color: #b29244;
+    color: var(--accent);
   }
 
   .success-message {
@@ -181,8 +181,8 @@
   }
 
   form {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 24px;
   }
@@ -195,7 +195,7 @@
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 6px;
@@ -205,10 +205,10 @@
   select {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-family: var(--font-family);
     font-size: 14px;
     box-sizing: border-box;
@@ -217,7 +217,7 @@
   input:focus,
   select:focus {
     outline: none;
-    border-color: #b29244;
+    border-color: var(--accent);
   }
 
   input:disabled,
@@ -235,8 +235,8 @@
   button {
     flex: 1;
     padding: 12px 20px;
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
     border: none;
     border-radius: 4px;
     font-size: 14px;
@@ -246,7 +246,7 @@
   }
 
   button:hover:not(:disabled) {
-    background: #9d7d37;
+    background: var(--accent-hover);
   }
 
   button:disabled {
@@ -257,8 +257,8 @@
   .cancel-button {
     flex: 1;
     padding: 12px 20px;
-    background: #ddd9c4;
-    color: #231f20;
+    background: var(--bg-sunken);
+    color: var(--text);
     border: none;
     border-radius: 4px;
     font-size: 14px;

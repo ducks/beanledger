@@ -311,7 +311,7 @@
   }
 
   h1 {
-    color: #231f20;
+    color: var(--text);
     font-size: 2rem;
     margin: 0;
   }
@@ -324,10 +324,10 @@
 
   .action-button {
     padding: 5px 14px;
-    background: #231f20;
-    border: 1px solid #231f20;
+    background: var(--text);
+    border: 1px solid var(--text);
     border-radius: 5px;
-    color: #f6f4eb;
+    color: var(--bg);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -336,14 +336,14 @@
   }
 
   .action-button:hover {
-    background: #3a3536;
-    border-color: #3a3536;
+    background: var(--button-dark-hover);
+    border-color: var(--button-dark-hover);
   }
 
   .primary-button {
     padding: 1rem 2rem;
-    background: #6b7360;
-    color: #f6f4eb;
+    background: var(--muted-green);
+    color: var(--bg);
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -353,7 +353,7 @@
   }
 
   .primary-button:hover:not(:disabled) {
-    background: #5a6250;
+    background: var(--muted-green-hover);
   }
 
   .primary-button:disabled {
@@ -362,10 +362,10 @@
   }
 
   .error {
-    background: #f7e6e4;
-    color: #b75742;
+    background: var(--danger-bg);
+    color: var(--danger);
     padding: 1rem;
-    border: 1px solid #d8afa7;
+    border: 1px solid var(--danger-border);
     border-radius: 8px;
     margin-bottom: 1rem;
   }
@@ -373,7 +373,7 @@
   .empty-state {
     text-align: center;
     padding: 4rem 2rem;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .days-list {
@@ -383,14 +383,14 @@
 
   .day-card {
     position: relative;
-    background: #f6f4eb;
-    border: 2px solid #c8c4a8;
+    background: var(--bg);
+    border: 2px solid var(--border);
     border-radius: 8px;
     transition: all 0.2s;
   }
 
   .day-card:hover {
-    border-color: #6b7360;
+    border-color: var(--text-muted);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
@@ -409,10 +409,10 @@
     width: 28px;
     height: 28px;
     padding: 0;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #b75742;
+    color: var(--danger);
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -428,9 +428,9 @@
   }
 
   .delete-button:hover:not(:disabled) {
-    background: #b75742;
-    color: #f6f4eb;
-    border-color: #b75742;
+    background: var(--danger);
+    color: var(--bg);
+    border-color: var(--danger);
   }
 
   .delete-button:disabled {
@@ -448,7 +448,7 @@
   .day-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: #231f20;
+    color: var(--text);
   }
 
   .status-badge {
@@ -459,23 +459,23 @@
   }
 
   .status-active {
-    background: #d4edda;
-    color: #155724;
+    background: var(--success-bg);
+    color: var(--success-text);
   }
 
   .status-scheduled {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: var(--info-bg);
+    color: var(--info-text);
   }
 
   .status-completed {
-    background: #e2e3e5;
-    color: #383d41;
+    background: var(--neutral-bg);
+    color: var(--neutral-text);
   }
 
   .day-meta {
     font-size: 0.875rem;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .modal-overlay {
@@ -492,8 +492,8 @@
   }
 
   .modal {
-    background: #f6f4eb;
-    border: 2px solid #c8c4a8;
+    background: var(--bg);
+    border: 2px solid var(--border);
     border-radius: 8px;
     padding: 2rem;
     max-width: 500px;
@@ -502,18 +502,18 @@
 
   .modal h2 {
     margin: 0 0 1rem 0;
-    color: #231f20;
+    color: var(--text);
   }
 
   .modal p {
     margin: 0 0 1rem 0;
-    color: #231f20;
+    color: var(--text);
   }
 
   .date-picker-section {
     margin: 1.5rem 0;
     padding: 1rem;
-    background: #eae8d8;
+    background: var(--bg-raised);
     border-radius: 4px;
   }
 
@@ -521,14 +521,14 @@
     display: block;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     margin-bottom: 0.5rem;
   }
 
   .date-picker-section input[type="date"] {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-family: var(--font-family);
     font-size: 1rem;
@@ -543,8 +543,8 @@
 
   .modal-actions button {
     padding: 0.75rem 1rem;
-    background: #6b7360;
-    color: #f6f4eb;
+    background: var(--muted-green);
+    color: var(--bg);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -553,17 +553,17 @@
   }
 
   .modal-actions button:hover:not(:disabled) {
-    background: #5a6250;
+    background: var(--muted-green-hover);
   }
 
   .modal-actions button.cancel {
     background: transparent;
-    color: #6b7360;
-    border: 1px solid #c8c4a8;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
   }
 
   .modal-actions button.cancel:hover:not(:disabled) {
-    background: #eae8d8;
+    background: var(--bg-raised);
   }
 
   .modal-actions button:disabled {

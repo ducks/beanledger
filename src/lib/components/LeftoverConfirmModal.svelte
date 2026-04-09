@@ -95,8 +95,8 @@
   }
 
   .modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 480px;
     max-height: 88vh;
@@ -107,7 +107,7 @@
 
   .modal-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -115,21 +115,21 @@
 
   .modal-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .close-button {
     background: none;
     border: none;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
     line-height: 1;
   }
 
   .close-button:hover {
-    color: #231f20;
+    color: var(--text);
   }
 
   .modal-body {
@@ -140,7 +140,7 @@
 
   .description {
     font-size: 12px;
-    color: #6b7360;
+    color: var(--text-muted);
     margin-bottom: 16px;
     line-height: 1.4;
   }
@@ -156,8 +156,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 12px;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 6px;
     transition: all 0.15s;
   }
@@ -180,7 +180,7 @@
     width: 18px;
     height: 18px;
     background: #7ba37b;
-    color: #f6f4eb;
+    color: var(--bg);
     border-radius: 50%;
     font-size: 12px;
     font-weight: 700;
@@ -189,7 +189,7 @@
 
   .group-label {
     font-size: 12px;
-    color: #231f20;
+    color: var(--text);
     font-weight: 700;
   }
 
@@ -202,10 +202,10 @@
   .leftover-input {
     width: 80px;
     padding: 4px 8px;
-    background: #ddd9c4;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #b29244;
+    color: var(--accent);
     font-family: var(--font-family);
     font-size: 13px;
     text-align: right;
@@ -223,12 +223,12 @@
 
   .unit {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .modal-footer {
     padding: 14px 20px;
-    border-top: 1px solid #c8c4a8;
+    border-top: 1px solid var(--border);
     display: flex;
     gap: 10px;
     justify-content: flex-end;
@@ -237,24 +237,24 @@
   .cancel-button {
     padding: 7px 14px;
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 12px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .cancel-button:hover {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
   }
 
   .confirm-button {
     padding: 7px 14px;
-    background: #b29244;
+    background: var(--accent);
     border: 1px solid #a08239;
     border-radius: 4px;
-    color: #f6f4eb;
+    color: var(--bg);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;

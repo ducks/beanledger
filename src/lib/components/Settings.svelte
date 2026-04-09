@@ -162,8 +162,8 @@
   }
 
   .modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 500px;
     display: flex;
@@ -173,7 +173,7 @@
 
   .modal-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -181,21 +181,21 @@
 
   .modal-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .close-button {
     background: none;
     border: none;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
     line-height: 1;
   }
 
   .close-button:hover {
-    color: #231f20;
+    color: var(--text);
   }
 
   .modal-body {
@@ -216,7 +216,7 @@
   .setting-label {
     font-size: 11px;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -224,16 +224,16 @@
   .reset-button {
     padding: 4px 10px;
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 3px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 10px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .reset-button:hover {
-    background: #f6f4eb;
+    background: var(--bg);
   }
 
   .radio-group {
@@ -247,7 +247,7 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #231f20;
+    color: var(--text);
     cursor: pointer;
   }
 
@@ -256,8 +256,8 @@
   }
 
   .batch-info {
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 12px;
   }
@@ -274,53 +274,53 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 12px;
   }
 
   .batch-name {
     flex: 1;
-    color: #231f20;
+    color: var(--text);
     font-weight: 600;
     text-transform: capitalize;
   }
 
   .batch-unit {
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 11px;
   }
 
   .batch-value {
-    color: #231f20;
+    color: var(--text);
     font-weight: 600;
   }
 
   .batch-input {
     width: 80px;
     padding: 4px 8px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 3px;
     background: #fff;
     font-size: 12px;
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     font-family: var(--font-family);
     text-align: right;
   }
 
   .batch-input:focus {
     outline: none;
-    border-color: #b29244;
+    border-color: var(--accent);
   }
 
   .delete-button {
     width: 24px;
     height: 24px;
     padding: 0;
-    background: #b75742;
-    color: #f6f4eb;
+    background: var(--danger);
+    color: var(--bg);
     border: none;
     border-radius: 3px;
     font-size: 18px;
@@ -338,18 +338,18 @@
     align-items: center;
     gap: 8px;
     padding: 12px;
-    background: #d8d4bc;
-    border: 1px solid #c8c4a8;
+    background: var(--border-subtle);
+    border: 1px solid var(--border);
     border-radius: 4px;
   }
 
   .batch-name-input {
     flex: 1;
     padding: 6px 10px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-size: 12px;
     font-family: var(--font-family);
   }
@@ -357,10 +357,10 @@
   .batch-weight-input {
     width: 80px;
     padding: 6px 10px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
     font-size: 12px;
     font-family: var(--font-family);
     text-align: right;
@@ -369,13 +369,13 @@
   .batch-name-input:focus,
   .batch-weight-input:focus {
     outline: none;
-    border-color: #b29244;
+    border-color: var(--accent);
   }
 
   .add-button {
     padding: 6px 14px;
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
     border: none;
     border-radius: 4px;
     font-size: 12px;
@@ -385,12 +385,12 @@
   }
 
   .add-button:hover {
-    background: #9a7d38;
+    background: var(--accent-hover);
   }
 
   .note {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-style: italic;
     margin-top: 8px;
   }
@@ -400,15 +400,15 @@
     gap: 8px;
     justify-content: flex-end;
     padding-top: 16px;
-    border-top: 1px solid #d8d4bc;
+    border-top: 1px solid var(--border-subtle);
   }
 
   .save-button {
     padding: 8px 16px;
-    background: #b29244;
+    background: var(--accent);
     border: none;
     border-radius: 4px;
-    color: #f6f4eb;
+    color: var(--bg);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -416,21 +416,21 @@
   }
 
   .save-button:hover {
-    background: #9d7d37;
+    background: var(--accent-hover);
   }
 
   .cancel-button {
     padding: 8px 16px;
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 12px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .cancel-button:hover {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
   }
 </style>

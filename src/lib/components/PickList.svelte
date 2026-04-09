@@ -141,125 +141,7 @@
   };
 
   function printPickList() {
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-<title>Pick List — ${formatDate(productionDate)}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 20px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .subtitle { font-size: 12px; color: #666; margin-bottom: 20px; }
-  .section { margin-bottom: 24px; page-break-inside: avoid; }
-  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #b29244; margin-bottom: 12px; font-weight: 700; }
-  .size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
-  .size-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
-  .size-label { font-size: 9px; color: #666; text-transform: uppercase; }
-  .size-qty { font-size: 18px; font-weight: 700; margin-top: 2px; }
-  .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding-bottom: 4px; border-bottom: 1px solid #ddd; margin-bottom: 8px; font-weight: 700; }
-  .item { display: grid; grid-template-columns: 20px 1fr auto auto; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
-  .checkbox { width: 16px; height: 16px; border: 1px solid #999; border-radius: 3px; }
-  .item-name { font-size: 11px; }
-  .item-qty { font-size: 12px; font-weight: 700; text-align: right; }
-  .item-weight { font-size: 10px; color: #666; text-align: right; min-width: 60px; }
-  .group-total { text-align: right; padding: 4px 0; font-size: 10px; color: #666; margin-top: 4px; }
-  .batch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .batch-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
-  .batch-name { font-size: 11px; color: #666; font-weight: 700; margin-bottom: 4px; }
-  .batch-count { font-size: 16px; font-weight: 700; }
-  .footer { margin-top: 20px; padding-top: 12px; border-top: 2px solid #ddd; display: flex; justify-content: space-between; }
-  .footer-label { font-size: 10px; color: #666; }
-  .footer-value { font-size: 16px; font-weight: 700; }
-  @media print {
-    @page { margin: 0.5in; }
-    body { padding: 0; }
-    .section { margin-bottom: 16px; page-break-inside: avoid; }
-    .section:first-of-type { margin-bottom: 12px; }
-    .section-title { color: #000; }
-    .size-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .size-box { border-color: #333; }
-    .size-label { color: #000; }
-    .subtitle { color: #000; }
-    .item { border-bottom-color: #ccc; }
-    .item-weight { color: #000; }
-    .checkbox { border-color: #333; }
-    .footer { border-top-color: #333; margin-top: 12px; }
-    .footer-label { color: #000; }
-    .group-title { border-bottom-color: #333; page-break-after: avoid; }
-    .group-total { color: #000; }
-    .batch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .batch-box { border-color: #333; }
-    .batch-name { color: #000; }
-    div[style*="margin-bottom"] { margin-bottom: 12px !important; page-break-inside: avoid; }
-  }
-</style>
-</head>
-<body>
-<h1>Pick List</h1>
-<div class="subtitle">${formatDate(productionDate)}</div>
-
-<div class="section section-summary">
-  <div class="section-title">Package Size Summary</div>
-  <div class="size-grid">
-${pickList.bySizeAll.map((s) => `    <div class="size-box">
-      <div class="size-label">${s.size}</div>
-      <div class="size-qty">${s.qty}</div>
-    </div>`).join('\n')}
-  </div>
-</div>
-
-${batchesNeeded.length > 0 ? `<div class="section section-batches">
-  <div class="section-title">Batches to Roast (${totalRoasts} total)</div>
-  <div class="batch-grid">
-${batchesNeeded.map((g) => `    <div class="batch-box">
-      <div class="batch-name">${g.label}</div>
-      <div class="batch-count">${g.calc.batchesUp} × ${g.calc.batchWeight} lb</div>
-    </div>`).join('\n')}
-  </div>
-</div>` : ''}
-
-<div class="section section-items">
-  <div class="section-title">All Items by Roast Group</div>
-${pickList.byGroup.map((g) => `  <div class="roast-group" style="margin-bottom: 12px;">
-    <div class="group-title">${g.label}</div>
-${g.items
-  .sort((a, b) => {
-    const dir = pickSort.dir === 'asc' ? 1 : -1;
-    return pickSort.field === 'size' ? (a.lbs - b.lbs) * dir : a.name.localeCompare(b.name) * dir;
-  })
-  .map((item) => `    <div class="item">
-      <div class="checkbox"></div>
-      <div class="item-name">${item.name}${item.hasManual && item.hasImported ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M+I</span>' : item.hasManual ? ' <span style="background:#b29244;color:#f6f4eb;font-size:7px;padding:1px 4px;border-radius:2px;font-weight:700;">M</span>' : ''}</div>
-      <div class="item-qty">×${item.qty}</div>
-      <div class="item-weight">${formatWeight(item.totalLbs, units)}</div>
-    </div>`).join('\n')}
-    <div class="group-total">${formatWeight(g.items.reduce((s, i) => s + i.totalLbs, 0), units)}</div>
-  </div>`).join('\n')}
-</div>
-
-<div class="footer">
-  <div>
-    <div class="footer-label">${orders.reduce((s, o) => s + o.qty, 0)} units across ${orders.length} products</div>
-  </div>
-  <div style="text-align: right;">
-    <div class="footer-label">Total Ordered</div>
-    <div class="footer-value">${formatWeight(grandTotalLbs, units)}</div>
-  </div>
-</div>
-</body>
-</html>
-`;
-
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => {
-      w.focus();
-      w.print();
-    }, 500);
+    window.print();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -278,8 +160,8 @@ ${g.items
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
-  <div class="modal">
-    <div class="modal-header">
+  <div class="modal print-root">
+    <div class="modal-header no-print">
       <div>
         <div class="modal-title">Pick List</div>
         <div class="modal-subtitle">{formatDate(productionDate)}</div>
@@ -397,8 +279,8 @@ ${g.items
   }
 
   .modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 680px;
     max-height: 88vh;
@@ -409,7 +291,7 @@ ${g.items
 
   .modal-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -417,13 +299,13 @@ ${g.items
 
   .modal-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .modal-subtitle {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     margin-top: 2px;
   }
 
@@ -437,7 +319,7 @@ ${g.items
     display: flex;
     border-radius: 4px;
     overflow: hidden;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
   }
 
   .sort-button {
@@ -446,41 +328,41 @@ ${g.items
     border: none;
     cursor: pointer;
     background: transparent;
-    color: #6b7360;
+    color: var(--text-muted);
     font-family: var(--font-family);
   }
 
   .sort-button.active {
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
   }
 
   .print-button {
     padding: 5px 12px;
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 11px;
     cursor: pointer;
     font-family: var(--font-family);
   }
 
   .print-button:hover {
-    background: #ddd9c4;
+    background: var(--bg-sunken);
   }
 
   .close-button {
     background: none;
     border: none;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
     line-height: 1;
   }
 
   .close-button:hover {
-    color: #231f20;
+    color: var(--text);
   }
 
   .modal-body {
@@ -492,13 +374,13 @@ ${g.items
 
   .size-summary {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
-    background: #f6f4eb;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
   }
 
   .section-title {
     font-size: 9px;
-    color: #b29244;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     margin-bottom: 10px;
@@ -516,22 +398,22 @@ ${g.items
     align-items: center;
     gap: 10px;
     padding: 7px 14px;
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 6px;
     min-width: 120px;
   }
 
   .size-label {
     font-size: 9px;
-    color: #6b7360;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
   .size-qty {
     font-size: 18px;
-    color: #b29244;
+    color: var(--accent);
     line-height: 1;
     margin-top: 2px;
     font-weight: 700;
@@ -539,8 +421,8 @@ ${g.items
 
   .batches-section {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
-    background: #f6f4eb;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
   }
 
   .batch-list {
@@ -554,14 +436,14 @@ ${g.items
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 6px;
   }
 
   .batch-label {
     font-size: 11px;
-    color: #231f20;
+    color: var(--text);
     font-weight: 700;
   }
 
@@ -573,14 +455,14 @@ ${g.items
 
   .batch-count {
     font-size: 20px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
     line-height: 1;
   }
 
   .batch-type {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .items-section {
@@ -593,12 +475,12 @@ ${g.items
 
   .group-header {
     font-size: 10px;
-    color: #b29244;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 6px;
     padding-bottom: 4px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     font-weight: 700;
   }
 
@@ -607,13 +489,13 @@ ${g.items
     align-items: center;
     gap: 12px;
     padding: 5px 0;
-    border-bottom: 1px solid #d8d4bc;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .checkbox {
     width: 16px;
     height: 16px;
-    border: 1px solid #6b7360;
+    border: 1px solid var(--text-muted);
     border-radius: 3px;
     flex-shrink: 0;
   }
@@ -621,12 +503,12 @@ ${g.items
   .item-name {
     flex: 1;
     font-size: 12px;
-    color: #231f20;
+    color: var(--text);
   }
 
   .item-qty {
     font-size: 13px;
-    color: #b29244;
+    color: var(--accent);
     min-width: 28px;
     text-align: right;
     font-weight: 700;
@@ -634,7 +516,7 @@ ${g.items
 
   .item-weight {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     min-width: 60px;
     text-align: right;
   }
@@ -644,13 +526,13 @@ ${g.items
     justify-content: flex-end;
     padding: 4px 0;
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .footer-summary {
     margin-top: 8px;
     padding-top: 12px;
-    border-top: 1px solid #c8c4a8;
+    border-top: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -658,7 +540,7 @@ ${g.items
 
   .footer-info {
     font-size: 11px;
-    color: #6b7360;
+    color: var(--text-muted);
   }
 
   .total-section {
@@ -667,26 +549,131 @@ ${g.items
 
   .total-label {
     font-size: 9px;
-    color: #6b7360;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
 
   .total-value {
     font-size: 16px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .manual-badge {
     display: inline-block;
-    background: #b29244;
-    color: #f6f4eb;
+    background: var(--accent);
+    color: var(--bg);
     font-size: 8px;
     padding: 2px 5px;
     border-radius: 3px;
     font-weight: 700;
     margin-left: 6px;
     vertical-align: middle;
+  }
+
+  @media print {
+    @page {
+      margin: 0.5in;
+    }
+
+    /* Hide everything, then un-hide the printable region via :global */
+    :global(body *) {
+      visibility: hidden;
+    }
+
+    .print-root,
+    .print-root * {
+      visibility: visible;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    /* Unhook the modal from its fixed overlay positioning so it flows
+       as a normal document for printing */
+    .modal-backdrop {
+      position: static;
+      background: none;
+      display: block;
+    }
+
+    .print-root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      max-width: none;
+      max-height: none;
+      background: white;
+      color: black;
+      border: none;
+      box-shadow: none;
+      display: block;
+    }
+
+    .modal-body {
+      overflow: visible;
+      display: block;
+      padding: 0;
+    }
+
+    /* Force light colors for print regardless of theme */
+    .print-root .section-title,
+    .print-root .group-header {
+      color: black;
+    }
+
+    .print-root .size-card,
+    .print-root .batch-item {
+      background: white;
+      border-color: #999;
+    }
+
+    .print-root .size-label,
+    .print-root .batch-type,
+    .print-root .item-weight,
+    .print-root .group-total,
+    .print-root .footer-info,
+    .print-root .total-label {
+      color: #333;
+    }
+
+    .print-root .item-name,
+    .print-root .batch-label,
+    .print-root .size-qty,
+    .print-root .item-qty,
+    .print-root .batch-count,
+    .print-root .total-value {
+      color: black;
+    }
+
+    .print-root .group-header {
+      border-bottom-color: #333;
+      page-break-after: avoid;
+    }
+
+    .print-root .pick-item {
+      border-bottom-color: #ccc;
+      page-break-inside: avoid;
+    }
+
+    .print-root .group-section {
+      page-break-inside: avoid;
+    }
+
+    .print-root .footer-summary {
+      border-top-color: #333;
+    }
+
+    .print-root .checkbox {
+      border-color: #333;
+    }
+
+    .print-root .manual-badge {
+      background: black;
+      color: white;
+    }
   }
 </style>

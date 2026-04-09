@@ -229,8 +229,8 @@
   }
 
   .modal {
-    background: #eae8d8;
-    border: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
     border-radius: 8px;
     width: 800px;
     max-height: 88vh;
@@ -241,7 +241,7 @@
 
   .modal-header {
     padding: 14px 20px;
-    border-bottom: 1px solid #c8c4a8;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -249,21 +249,21 @@
 
   .modal-title {
     font-size: 15px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
   .close-button {
     background: none;
     border: none;
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 20px;
     cursor: pointer;
     line-height: 1;
   }
 
   .close-button:hover {
-    color: #231f20;
+    color: var(--text);
   }
 
   .modal-body {
@@ -280,8 +280,8 @@
   }
 
   .stat-card {
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 14px;
     text-align: center;
@@ -289,7 +289,7 @@
 
   .stat-label {
     font-size: 9px;
-    color: #6b7360;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 6px;
@@ -297,7 +297,7 @@
 
   .stat-value {
     font-size: 20px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
   }
 
@@ -307,7 +307,7 @@
 
   .section-title {
     font-size: 9px;
-    color: #b29244;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.12em;
     margin-bottom: 12px;
@@ -316,8 +316,8 @@
 
   .table-container {
     overflow-x: auto;
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
   }
 
@@ -328,12 +328,12 @@
   }
 
   th {
-    background: #eae8d8;
+    background: var(--bg-raised);
     padding: 10px;
     text-align: left;
-    border-bottom: 2px solid #c8c4a8;
+    border-bottom: 2px solid var(--border);
     font-weight: 600;
-    color: #231f20;
+    color: var(--text);
     text-transform: uppercase;
     font-size: 9px;
     letter-spacing: 0.05em;
@@ -341,12 +341,12 @@
 
   td {
     padding: 10px;
-    border-bottom: 1px solid #d8d4bc;
-    color: #231f20;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text);
   }
 
   .batch-cell {
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
     font-size: 14px;
   }
@@ -358,8 +358,8 @@
   }
 
   .size-card {
-    background: #f6f4eb;
-    border: 1px solid #c8c4a8;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 12px;
     text-align: center;
@@ -367,22 +367,22 @@
 
   .size-label {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
   .size-qty {
     font-size: 18px;
-    color: #b29244;
+    color: var(--accent);
     font-weight: 700;
     margin-top: 4px;
   }
 
   .date-range-filter {
     padding: 10px 20px;
-    border-bottom: 1px solid #d8d4bc;
-    background: #f6f4eb;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -390,7 +390,7 @@
 
   .filter-label {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
@@ -403,24 +403,24 @@
 
   .date-input {
     padding: 4px 8px;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: #eae8d8;
-    color: #231f20;
+    background: var(--bg-raised);
+    color: var(--text);
     font-family: var(--font-family);
     font-size: 11px;
   }
 
   .date-separator {
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 11px;
   }
 
   .clear-button {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     background: none;
-    border: 1px solid #c8c4a8;
+    border: 1px solid var(--border);
     border-radius: 4px;
     padding: 3px 8px;
     cursor: pointer;
@@ -428,12 +428,12 @@
   }
 
   .clear-button:hover {
-    background: #eae8d8;
+    background: var(--bg-raised);
   }
 
   .date-count {
     font-size: 10px;
-    color: #6b7360;
+    color: var(--text-muted);
     margin-left: auto;
     font-family: var(--font-family);
   }

@@ -34,14 +34,141 @@
 <style>
   :global(:root) {
     --font-family: Arial, Helvetica, sans-serif;
+
+    /* Surfaces */
+    --bg: #f6f4eb;
+    --bg-raised: #eae8d8;
+    --bg-sunken: #ddd9c4;
+    --bg-accent: #f0e8d4;
+
+    /* Borders */
+    --border: #c8c4a8;
+    --border-subtle: #d8d4bc;
+
+    /* Text */
+    --text: #231f20;
+    --text-muted: #6b7360;
+    --text-inverse: #f6f4eb;
+
+    /* Brand (gold) */
+    --accent: #b29244;
+    --accent-hover: #9d7d37;
+
+    /* Dark button */
+    --button-dark: #231f20;
+    --button-dark-hover: #3a3536;
+
+    /* Danger */
+    --danger: #b75742;
+    --danger-hover: #9d4836;
+    --danger-bg: #f7e6e4;
+    --danger-border: #d8afa7;
+
+    /* Status: success */
+    --success-bg: #d4edda;
+    --success-text: #155724;
+
+    /* Status: info */
+    --info-bg: #d1ecf1;
+    --info-text: #0c5460;
+
+    /* Status: neutral */
+    --neutral-bg: #e2e3e5;
+    --neutral-text: #383d41;
+
+    /* Muted green (neutral-positive) */
+    --muted-green: #6b7360;
+    --muted-green-hover: #5a6250;
+
+    color-scheme: light;
+  }
+
+  :global(:root[data-theme="dark"]) {
+    --bg: #1e1c1a;
+    --bg-raised: #2a2723;
+    --bg-sunken: #16140f;
+    --bg-accent: #34302a;
+
+    --border: #3f3b31;
+    --border-subtle: #2f2c25;
+
+    --text: #ede5d0;
+    --text-muted: #9a9182;
+    --text-inverse: #1e1c1a;
+
+    --accent: #d4a84b;
+    --accent-hover: #e5bc5f;
+
+    --button-dark: #ede5d0;
+    --button-dark-hover: #fffaeb;
+
+    --danger: #d67d6a;
+    --danger-hover: #e89584;
+    --danger-bg: #3a201c;
+    --danger-border: #5c3530;
+
+    --success-bg: #1e3a25;
+    --success-text: #8bc896;
+
+    --info-bg: #1a3540;
+    --info-text: #7fc3d8;
+
+    --neutral-bg: #2c2e30;
+    --neutral-text: #a8adb3;
+
+    --muted-green: #8a9180;
+    --muted-green-hover: #9ca395;
+
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) {
+      --bg: #1e1c1a;
+      --bg-raised: #2a2723;
+      --bg-sunken: #16140f;
+      --bg-accent: #34302a;
+
+      --border: #3f3b31;
+      --border-subtle: #2f2c25;
+
+      --text: #ede5d0;
+      --text-muted: #9a9182;
+      --text-inverse: #1e1c1a;
+
+      --accent: #d4a84b;
+      --accent-hover: #e5bc5f;
+
+      --button-dark: #ede5d0;
+      --button-dark-hover: #fffaeb;
+
+      --danger: #d67d6a;
+      --danger-hover: #e89584;
+      --danger-bg: #3a201c;
+      --danger-border: #5c3530;
+
+      --success-bg: #1e3a25;
+      --success-text: #8bc896;
+
+      --info-bg: #1a3540;
+      --info-text: #7fc3d8;
+
+      --neutral-bg: #2c2e30;
+      --neutral-text: #a8adb3;
+
+      --muted-green: #8a9180;
+      --muted-green-hover: #9ca395;
+
+      color-scheme: dark;
+    }
   }
 
   :global(body) {
     margin: 0;
     padding: 0;
     font-family: var(--font-family);
-    background: #f6f4eb;
-    color: #231f20;
+    background: var(--bg);
+    color: var(--text);
   }
 
   :global(*) {
@@ -49,8 +176,8 @@
   }
 
   header {
-    background: #eae8d8;
-    border-bottom: 1px solid #c8c4a8;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
     padding: 1rem 0;
   }
 
@@ -85,7 +212,7 @@
   }
 
   .tenant-name {
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 0.9rem;
   }
 
@@ -96,15 +223,15 @@
   }
 
   .username {
-    color: #6b7360;
+    color: var(--text-muted);
     font-size: 0.9rem;
   }
 
   button {
     padding: 0.5rem 1rem;
-    background: #231f20;
-    color: #f6f4eb;
-    border: 1px solid #231f20;
+    background: var(--button-dark);
+    color: var(--text-inverse);
+    border: 1px solid var(--button-dark);
     border-radius: 4px;
     font-size: 0.9rem;
     font-weight: 600;
@@ -113,7 +240,7 @@
   }
 
   button:hover {
-    background: #3a3536;
-    border-color: #3a3536;
+    background: var(--button-dark-hover);
+    border-color: var(--button-dark-hover);
   }
 </style>
