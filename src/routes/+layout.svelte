@@ -3,9 +3,9 @@
   import { goto } from '$app/navigation';
   import type { LayoutData } from './$types';
 
-  export let data: LayoutData;
+  let { data, children }: { data: LayoutData; children: any } = $props();
 
-  let theme: 'light' | 'dark' = 'light';
+  let theme = $state<'light' | 'dark'>('light');
 
   onMount(() => {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;
@@ -51,7 +51,7 @@
   </header>
 {/if}
 
-<slot />
+{@render children()}
 
 <style>
   :global(:root) {
