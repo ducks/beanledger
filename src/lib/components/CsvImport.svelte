@@ -25,6 +25,7 @@
   let ignoredSkus = $state<string[]>([]);
   let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: string; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
   let manualMatches = $state<Record<string, string>>({});
+  let isDragging = $state(false);
 
   onMount(async () => {
     await loadGroups();
@@ -187,13 +188,58 @@
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
+    loadFile(file);
+  }
 
+  function loadFile(file: File) {
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
+      error = 'Please drop a CSV file';
+      return;
+    }
+
+    error = '';
     filename = file.name;
     const reader = new FileReader();
     reader.onload = (e) => {
       csvText = e.target?.result as string;
     };
     reader.readAsText(file);
+  }
+
+  function handleDragEnter(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (loading) return;
+    isDragging = true;
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only un-highlight when leaving the drop zone itself, not child elements
+    if (e.currentTarget === e.target) {
+      isDragging = false;
+    }
+  }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = false;
+    if (loading) return;
+
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      loadFile(file);
+    }
   }
 
   async function handlePreview() {
@@ -281,9 +327,31 @@
   <h3>Import Orders from CSV</h3>
 
   <div class="upload-section">
-    <button type="button" onclick={() => fileInput.click()} disabled={loading}>
-      Choose CSV File
-    </button>
+    <div
+      class="drop-zone"
+      class:dragging={isDragging}
+      ondragenter={handleDragEnter}
+      ondragleave={handleDragLeave}
+      ondragover={handleDragOver}
+      ondrop={handleDrop}
+      role="button"
+      tabindex="0"
+      onclick={() => !loading && fileInput?.click()}
+      onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && !loading && fileInput?.click()}
+    >
+      <div class="drop-zone-content">
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-text">
+          {#if isDragging}
+            Drop CSV file here
+          {:else if filename}
+            <strong>{filename}</strong> loaded — drop or click to replace
+          {:else}
+            Drop CSV file here, or <span class="link">click to browse</span>
+          {/if}
+        </div>
+      </div>
+    </div>
     <input
       type="file"
       accept=".csv,text/csv"
@@ -518,6 +586,52 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 2rem 1rem;
+    background: var(--bg);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .drop-zone:hover {
+    border-color: var(--accent);
+    background: var(--bg-sunken);
+  }
+
+  .drop-zone.dragging {
+    border-color: var(--accent);
+    background: var(--bg-accent);
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  .drop-zone-icon {
+    font-size: 2rem;
+    opacity: 0.6;
+  }
+
+  .drop-zone-text {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .drop-zone-text strong {
+    color: var(--text);
+  }
+
+  .drop-zone-text .link {
+    color: var(--accent);
+    text-decoration: underline;
   }
 
   .or-divider {
