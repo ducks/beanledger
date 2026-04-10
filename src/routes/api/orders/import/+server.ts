@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/db';
 import { parseOrderCsv, matchProducts, generateOrderId } from '$lib/csv';
-import type { Product, ImportAlias } from '$lib/types';
+import { parseWithConfig } from '$lib/csv/formats/generic';
+import type { Product, ImportAlias, CsvFormat } from '$lib/types';
 
 /**
  * POST /api/orders/import
@@ -25,14 +26,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   try {
-    const { csvText, productionDate, filename, confirm, manualMatches } = await request.json();
+    const { csvText, productionDate, filename, confirm, manualMatches, formatId } = await request.json();
 
     if (!csvText || !productionDate) {
       return json({ error: 'csvText and productionDate are required' }, { status: 400 });
     }
 
-    // Parse CSV
-    const csvRows = parseOrderCsv(csvText);
+    // Parse CSV — use the selected format if provided, otherwise fall back
+    // to legacy auto-detect (will be removed once all tenants have migrated).
+    let csvRows;
+    if (formatId) {
+      const formatResult = await query<CsvFormat>(
+        'SELECT config FROM csv_formats WHERE id = $1 AND tenant_id = $2 AND active = true',
+        [formatId, locals.tenant.id]
+      );
+      if (formatResult.rows.length === 0) {
+        return json({ error: `CSV format not found: ${formatId}` }, { status: 400 });
+      }
+      csvRows = parseWithConfig(csvText, formatResult.rows[0].config);
+    } else {
+      csvRows = parseOrderCsv(csvText);
+    }
 
     // Fetch all products for this tenant
     const productsResult = await query<Product>(

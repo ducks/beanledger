@@ -10,9 +10,10 @@
 7. [Production Planning](#production-planning)
 8. [Batch Overrides](#batch-overrides)
 9. [Reports & Pick Lists](#reports--pick-lists)
-10. [CSV Import](#csv-import)
-11. [Manual Order Management](#manual-order-management)
-12. [Troubleshooting](#troubleshooting)
+10. [CSV Formats](#csv-formats)
+11. [CSV Import](#csv-import)
+12. [Manual Order Management](#manual-order-management)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -354,35 +355,74 @@ Access comprehensive reports:
 
 ---
 
+## CSV Formats
+
+Before importing orders, you need at least one CSV format configured. Formats tell BeanLedger how to read CSV files from your specific systems (ShipStation, TRADE, Square POS, etc.).
+
+### Creating a CSV Format
+
+1. Open **Catalog** (from dashboard or roast day)
+2. Click the **CSV Formats** tab
+3. Click **+ Add Format**
+4. Enter a name (e.g., "ShipStation Export")
+5. Drop a sample CSV file into the drop zone (or paste CSV text)
+6. The system reads the CSV headers and shows them as dropdowns
+
+**Simple Mode (Single Column):**
+- Select the column that contains the product name
+- Select the column that contains the quantity
+
+**Combine Columns Mode:**
+- Toggle to "Combine Columns" when the product name spans multiple CSV columns
+- Build a template using `{column_name}` placeholders
+- Click the column tag buttons to insert column references
+- Example: `{internal_id} - {size}` combines "Sure Thing" + "10.9oz" into "Sure Thing - 10.9oz"
+
+**Aggregate option:**
+- Check "Aggregate duplicate rows" if your CSV has multiple rows for the same product that should be summed (common with TRADE batch exports)
+
+6. Review the **live preview** below to verify the output looks correct
+7. Click **Create** to save
+
+### Editing / Deleting Formats
+
+From the CSV Formats tab in Catalog:
+- Click **Edit** to modify a format's column mapping
+- Click **Delete** to remove a format
+- Toggle **Active/Inactive** to hide a format without deleting it
+
+### Example Format Configurations
+
+**ShipStation:**
+- Product Name Column: `item - name`
+- Quantity Column: `item - qty`
+- Aggregate: No
+
+**TRADE Batch:**
+- Mode: Combine Columns
+- Template: `TRADE {internal_id} - {size}`
+- Quantity Column: `quantity`
+- Aggregate: Yes
+
+---
+
 ## CSV Import
-
-### Preparing Your CSV File
-
-Your CSV must include these columns:
-- `product_name`: Exact product name (must match products in system)
-- `quantity`: Number of units
-
-**Optional columns:**
-- `order_id`: For reference
-- `customer`: For reference
-
-**Example CSV:**
-```csv
-product_name,quantity
-TRADE Sure Thing 2lb,6
-Retail Espresso 12oz,24
-Wholesale Morning Blend 5lb,8
-```
 
 ### Importing Orders
 
 1. Navigate to desired production date
-2. Click **CSV Import** button
-3. Click **Choose File** or drag-and-drop CSV
-4. Review preview:
+2. Scroll to the **Import Orders from CSV** section
+3. Select the **Format** from the dropdown (must have at least one format configured)
+4. Drop a CSV file into the drop zone, click to browse, or paste CSV text
+5. Click **Preview Import**
+6. Review preview:
    - Matched products shown in green
+   - Alias-matched products shown with "Alias" badge
    - Unmatched products shown in red
-5. Click **Import Orders**
+7. Handle any unmatched products:
+   - Add to catalog inline
+   - Ignore for this import
+8. Click **Import Orders**
 
 ### Handling Import Errors
 
@@ -390,6 +430,7 @@ Wholesale Morning Blend 5lb,8
 - Product name doesn't match exactly (matching is case-sensitive and exact)
 - Product is marked inactive
 - Product doesn't exist in system
+- No import alias configured for this product name
 
 **Important:** CSV import uses exact matching only. Product names must match character-for-character including:
 - Spelling
@@ -399,9 +440,18 @@ Wholesale Morning Blend 5lb,8
 
 **Solutions:**
 1. Fix product name in CSV to match exactly
-2. Create missing product in Settings > Products
-3. Activate product if inactive
-4. Use product search in settings to find exact name format
+2. Create missing product in Catalog > Products
+3. Create an import alias in Catalog > Aliases to map the CSV name to an existing product
+4. Activate product if inactive
+5. Use product search in Catalog to find exact name format
+
+### Import Aliases
+
+Aliases map CSV product names to existing catalog products. Useful for:
+- Rotating subscriptions where the CSV name stays the same but the product changes weekly
+- Vendor-specific naming that differs from your catalog names
+
+Manage aliases in **Catalog > Aliases** tab.
 
 ### Import Batches
 
@@ -675,6 +725,10 @@ predicted_leftover = (batches_up * batch_size * (1 - roast_loss_pct / 100)) - (t
 
 **Green Coffee**: Unroasted coffee beans (input to roasting)
 
+**CSV Format**: Configuration that maps CSV columns to product name and quantity fields
+
+**Import Alias**: Maps a CSV product name to an existing catalog product (useful for rotating subscriptions)
+
 **Import Batch**: Group of orders from single CSV import
 
 **Leftover**: Finished coffee remaining from previous roast
@@ -700,7 +754,7 @@ predicted_leftover = (batches_up * batch_size * (1 - roast_loss_pct / 100)) - (t
 For technical issues or feature requests, contact your system administrator.
 
 **Version**: 1.0
-**Last Updated**: March 2026
+**Last Updated**: April 2026
 
 ---
 
@@ -718,7 +772,8 @@ For technical issues or feature requests, contact your system administrator.
 | Update leftover | Click leftover field → Enter amount → Press Enter |
 | Generate pick list | Click Pick List button |
 | Save snapshot | Reports → Save Snapshot |
-| Import CSV | CSV Import → Choose file → Import |
+| Add CSV format | Catalog → CSV Formats → + Add Format → Drop sample CSV → Map columns → Create |
+| Import CSV | Select format → Drop file → Preview → Import |
 | Create override | Batch Overrides → Select type → Enter weight → Save |
 
 ### Status Indicators
