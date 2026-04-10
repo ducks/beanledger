@@ -61,6 +61,21 @@ export interface ImportAlias {
   created_at: string;
 }
 
+export interface CsvFormatConfig {
+  productNameColumn: string | { template: string };
+  quantityColumn: string;
+  aggregate?: boolean;
+}
+
+export interface CsvFormat {
+  id: string;
+  name: string;
+  description: string | null;
+  config: CsvFormatConfig;
+  active: boolean;
+  created_at: string;
+}
+
 // Auth types
 export interface Tenant {
   id: string;

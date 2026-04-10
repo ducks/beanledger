@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias } from '$lib/types';
+  import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
+  import CsvFormatBuilder from './CsvFormatBuilder.svelte';
 
   let {
     onClose,
@@ -9,11 +10,14 @@
     onUpdate: () => void;
   } = $props();
 
-  let tab = $state<'products' | 'groups' | 'aliases'>('products');
+  let tab = $state<'products' | 'groups' | 'aliases' | 'formats'>('products');
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
   let batchTypes = $state<BatchOverride[]>([]);
   let aliases = $state<ImportAlias[]>([]);
+  let csvFormats = $state<CsvFormat[]>([]);
+  let showFormatBuilder = $state(false);
+  let editingFormat = $state<CsvFormat | null>(null);
   let loading = $state(true);
   let showGroupForm = $state(false);
   let editingGroup = $state<RoastGroup | null>(null);
@@ -88,16 +92,18 @@
   async function loadData() {
     loading = true;
     try {
-      const [productsRes, groupsRes, batchTypesRes, aliasesRes] = await Promise.all([
+      const [productsRes, groupsRes, batchTypesRes, aliasesRes, formatsRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/groups'),
         fetch('/api/batch-overrides'),
-        fetch('/api/aliases')
+        fetch('/api/aliases'),
+        fetch('/api/csv-formats')
       ]);
       products = await productsRes.json();
       groups = await groupsRes.json();
       batchTypes = await batchTypesRes.json();
       aliases = await aliasesRes.json();
+      csvFormats = await formatsRes.json();
 
       // Set first batch type as default if available
       if (batchTypes.length > 0 && !formBatchType) {
@@ -314,6 +320,41 @@
     await loadData();
     onUpdate();
   }
+
+  // CSV format CRUD
+  function openCreateFormatForm() {
+    editingFormat = null;
+    showFormatBuilder = true;
+  }
+
+  function openEditFormatForm(format: CsvFormat) {
+    editingFormat = format;
+    showFormatBuilder = true;
+  }
+
+  async function onFormatSaved() {
+    showFormatBuilder = false;
+    editingFormat = null;
+    await loadData();
+    onUpdate();
+  }
+
+  async function deleteFormat(id: string) {
+    if (!confirm('Delete this CSV format?')) return;
+    await fetch(`/api/csv-formats?id=${id}`, { method: 'DELETE' });
+    await loadData();
+    onUpdate();
+  }
+
+  async function toggleFormatActive(format: CsvFormat) {
+    await fetch('/api/csv-formats', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...format, active: !format.active })
+    });
+    await loadData();
+    onUpdate();
+  }
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
@@ -344,6 +385,13 @@
         onclick={() => (tab = 'aliases')}
       >
         Aliases ({aliases.length})
+      </button>
+      <button
+        class="tab"
+        class:active={tab === 'formats'}
+        onclick={() => (tab = 'formats')}
+      >
+        CSV Formats ({csvFormats.length})
       </button>
     </div>
 
@@ -510,10 +558,69 @@
             </tbody>
           </table>
         </div>
+      {:else if tab === 'formats'}
+        <div class="section-header">
+          <div class="section-title">CSV Import Formats</div>
+          <button class="add-button" onclick={openCreateFormatForm}>+ Add Format</button>
+        </div>
+        <p class="aliases-description">
+          Define how to parse CSV exports from different sources. Each format
+          maps the CSV's product name and quantity columns into beanledger.
+        </p>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Product Column</th>
+                <th>Quantity Column</th>
+                <th>Aggregate</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each csvFormats as format}
+                <tr class:inactive={!format.active}>
+                  <td>{format.name}</td>
+                  <td>{typeof format.config.productNameColumn === 'string' ? format.config.productNameColumn : format.config.productNameColumn.template}</td>
+                  <td>{format.config.quantityColumn}</td>
+                  <td>{format.config.aggregate ? 'Yes' : 'No'}</td>
+                  <td>
+                    <button
+                      class="status-toggle"
+                      onclick={() => toggleFormatActive(format)}
+                    >
+                      {format.active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="edit-button" onclick={() => openEditFormatForm(format)}>
+                        Edit
+                      </button>
+                      <button class="delete-button" onclick={() => deleteFormat(format.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       {/if}
     </div>
   </div>
 </div>
+
+{#if showFormatBuilder}
+  <CsvFormatBuilder
+    editing={editingFormat}
+    onClose={() => { showFormatBuilder = false; editingFormat = null; }}
+    onSave={onFormatSaved}
+  />
+{/if}
 
 {#if showAliasForm}
   <div class="form-backdrop" onclick={(e) => e.target === e.currentTarget && closeAliasForm()}>

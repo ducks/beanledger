@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
-  import type { RoastGroup, BatchOverride, Product } from '$lib/types';
+  import type { RoastGroup, BatchOverride, Product, CsvFormat } from '$lib/types';
 
   let {
     productionDate,
@@ -26,17 +26,28 @@
   let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: string; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
   let manualMatches = $state<Record<string, string>>({});
   let isDragging = $state(false);
+  let csvFormats = $state<CsvFormat[]>([]);
+  let selectedFormatId = $state<string>('');
 
   onMount(async () => {
     await loadGroups();
     await loadProducts();
     await loadBatchTypes();
+    await loadCsvFormats();
 
     // Warn if no batch types exist
     if (batchTypes.length === 0) {
       console.warn('No batch types found. Users must create batch types in Settings before creating groups.');
     }
   });
+
+  async function loadCsvFormats() {
+    const res = await fetch('/api/csv-formats');
+    csvFormats = (await res.json()).filter((f: CsvFormat) => f.active);
+    if (csvFormats.length > 0 && !selectedFormatId) {
+      selectedFormatId = csvFormats[0].id;
+    }
+  }
 
   async function loadGroups() {
     const res = await fetch('/api/groups');
@@ -259,7 +270,8 @@
         body: JSON.stringify({
           csvText,
           productionDate,
-          confirm: false
+          confirm: false,
+          formatId: selectedFormatId
         })
       });
 
@@ -299,7 +311,8 @@
           productionDate,
           filename: filename || 'pasted.csv',
           confirm: true,
-          manualMatches
+          manualMatches,
+          formatId: selectedFormatId
         })
       });
 
@@ -325,6 +338,21 @@
 
 <div class="csv-import">
   <h3>Import Orders from CSV</h3>
+
+  {#if csvFormats.length === 0}
+    <div class="format-warning">
+      No CSV formats configured yet. Add a format in the Catalog to begin importing.
+    </div>
+  {:else}
+    <div class="format-selector">
+      <label for="format-select">Format:</label>
+      <select id="format-select" bind:value={selectedFormatId} disabled={loading}>
+        {#each csvFormats as fmt}
+          <option value={fmt.id}>{fmt.name}</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
 
   <div class="upload-section">
     <div
@@ -580,6 +608,41 @@
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
     color: var(--text);
+  }
+
+  .format-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .format-selector label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .format-selector select {
+    padding: 6px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-family);
+    font-size: 13px;
+  }
+
+  .format-warning {
+    background: var(--bg-accent);
+    border: 1px solid #d4c49c;
+    color: #8b6914;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
   }
 
   .upload-section {
