@@ -23,7 +23,18 @@
   let products = $state<Product[]>([]);
   let batchTypes = $state<BatchOverride[]>([]);
   let ignoredSkus = $state<string[]>([]);
-  let addingSkus = $state<Record<string, { lbs: number; groupId: string; creatingNewGroup: boolean; newGroupLabel: string; newGroupBatchType: string; newGroupRoastLoss: number; newGroupType: 'blend' | 'single_origin' }>>({});
+  let addingSkus = $state<Record<string, {
+    mode: 'create' | 'map';
+    cleanName: string;
+    lbs: number;
+    groupId: string;
+    creatingNewGroup: boolean;
+    newGroupLabel: string;
+    newGroupBatchType: string;
+    newGroupRoastLoss: number;
+    newGroupType: 'blend' | 'single_origin';
+    mapToProductId: string;
+  }>>({});
   let manualMatches = $state<Record<string, string>>({});
   let isDragging = $state(false);
   let csvFormats = $state<CsvFormat[]>([]);
@@ -68,7 +79,7 @@
     preview?.filter(m => m.confidence === 'none' && !ignoredSkus.includes(m.productName)) || []
   );
 
-  function startAddSku(productName: string) {
+  function startAddSku(productName: string, mode: 'create' | 'map' = 'create') {
     const lbs = parseLbsFromSkuName(productName);
     const suggestedLabel = skuToGroupLabel(productName);
     const suggestedGroup = groups.find(g => g.label.toLowerCase().includes(suggestedLabel.toLowerCase()));
@@ -76,13 +87,16 @@
     addingSkus = {
       ...addingSkus,
       [productName]: {
+        mode,
+        cleanName: suggestedLabel ? `${suggestedLabel} - ${lbs >= 1 ? `${Math.round(lbs * 10) / 10}lb` : `${Math.round(lbs * 16 * 10) / 10}oz`}` : productName,
         lbs: lbs || 0,
         groupId: suggestedGroup?.id || groups[0]?.id || '',
         creatingNewGroup: false,
         newGroupLabel: suggestedLabel,
         newGroupBatchType: batchTypes[0]?.batch_type || '',
         newGroupRoastLoss: 15,
-        newGroupType: 'single_origin'
+        newGroupType: 'single_origin',
+        mapToProductId: ''
       }
     };
   }
@@ -94,93 +108,129 @@
       return;
     }
 
-    // Clear previous errors
     error = '';
 
     try {
-      let groupId = formData.groupId;
-
-      // Create new group if needed
-      if (formData.creatingNewGroup) {
-        if (!formData.newGroupLabel.trim()) {
-          error = 'Group label is required';
+      if (formData.mode === 'map') {
+        // Map to existing product — just create an alias
+        if (!formData.mapToProductId) {
+          error = 'Please select a product to map to';
           return;
         }
 
-        if (!formData.newGroupBatchType) {
-          error = 'Batch type is required. Please create batch types in Settings first.';
+        const aliasRes = await fetch('/api/aliases', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            alias_name: productName,
+            product_id: formData.mapToProductId,
+            active: true
+          })
+        });
+
+        if (!aliasRes.ok) {
+          error = `Failed to create alias: ${await aliasRes.text()}`;
+          return;
+        }
+      } else {
+        // Create mode — create product (with clean name) and alias if name differs
+        let groupId = formData.groupId;
+
+        if (formData.creatingNewGroup) {
+          if (!formData.newGroupLabel.trim()) {
+            error = 'Group label is required';
+            return;
+          }
+
+          if (!formData.newGroupBatchType) {
+            error = 'Batch type is required. Please create batch types in Settings first.';
+            return;
+          }
+
+          const newGroupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const newGroup = {
+            id: newGroupId,
+            label: formData.newGroupLabel,
+            batch_type: formData.newGroupBatchType,
+            roast_loss_pct: formData.newGroupRoastLoss,
+            type: formData.newGroupType,
+            components: [],
+            active: true,
+            created_at: new Date().toISOString().slice(0, 10)
+          };
+
+          const groupRes = await fetch('/api/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newGroup)
+          });
+
+          if (!groupRes.ok) {
+            error = `Failed to create group: ${await groupRes.text()}`;
+            return;
+          }
+
+          groupId = newGroupId;
+          await loadGroups();
+        }
+
+        if (!groupId) {
+          error = 'Please select or create a group';
           return;
         }
 
-        const newGroupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const newGroup = {
-          id: newGroupId,
-          label: formData.newGroupLabel,
-          batch_type: formData.newGroupBatchType,
-          roast_loss_pct: formData.newGroupRoastLoss,
-          type: formData.newGroupType,
-          components: [],
+        const cleanName = formData.cleanName.trim();
+        if (!cleanName) {
+          error = 'Product name is required';
+          return;
+        }
+
+        const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const newProduct = {
+          id: productId,
+          name: cleanName,
+          lbs: formData.lbs,
+          group_id: groupId,
           active: true,
           created_at: new Date().toISOString().slice(0, 10)
         };
 
-        console.log('Creating group:', newGroup);
-
-        const groupRes = await fetch('/api/groups', {
+        const productRes = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newGroup)
+          body: JSON.stringify(newProduct)
         });
 
-        if (!groupRes.ok) {
-          const errorText = await groupRes.text();
-          error = `Failed to create group: ${errorText}`;
-          console.error('Group creation failed:', errorText);
+        if (!productRes.ok) {
+          error = `Failed to create product: ${await productRes.text()}`;
           return;
         }
 
-        groupId = newGroupId;
-
-        // Reload groups to include the new one
-        await loadGroups();
-      }
-
-      if (!groupId) {
-        error = 'Please select or create a group';
-        return;
-      }
-
-      // Create product
-      const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const newProduct = {
-        id: productId,
-        name: productName,
-        lbs: formData.lbs,
-        group_id: groupId,
-        active: true,
-        created_at: new Date().toISOString().slice(0, 10)
-      };
-
-      const productRes = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
-      });
-
-      if (!productRes.ok) {
-        error = `Failed to create product: ${await productRes.text()}`;
-        return;
+        // If the clean name differs from the CSV name, create an alias
+        if (cleanName.toLowerCase() !== productName.toLowerCase()) {
+          await fetch('/api/aliases', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              alias_name: productName,
+              product_id: productId,
+              active: true
+            })
+          });
+        }
       }
 
       // Remove from adding state
       const { [productName]: _, ...rest } = addingSkus;
       addingSkus = rest;
 
-      // Re-run preview to pick up the new product
+      // Re-run preview to pick up the new product/alias
       await handlePreview();
     } catch (err) {
-      error = `Failed to create product: ${err instanceof Error ? err.message : String(err)}`;
-      console.error('Error creating product:', err);
+      error = `Failed: ${err instanceof Error ? err.message : String(err)}`;
+      console.error('Error:', err);
     }
   }
 
@@ -440,85 +490,144 @@
               {#if addingSkus[match.productName]}
                 {@const formData = addingSkus[match.productName]}
                 <div class="add-form">
-                  <div class="form-row">
-                    <label>
-                      Weight (lbs):
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        bind:value={formData.lbs}
-                        class="weight-input"
-                      />
-                    </label>
-                    <label>
-                      Roast Group:
-                      <select
-                        bind:value={formData.groupId}
-                        onchange={(e) => {
-                          const target = e.target as HTMLSelectElement;
-                          formData.creatingNewGroup = target.value === '__new__';
-                        }}
-                        class="group-select"
-                      >
-                        <option value="__new__">+ Create New Group</option>
-                        {#each groups as group}
-                          <option value={group.id}>{group.label}</option>
-                        {/each}
-                      </select>
-                    </label>
+                  <div class="mode-tabs">
+                    <button
+                      class="mode-tab"
+                      class:active={formData.mode === 'create'}
+                      onclick={() => formData.mode = 'create'}
+                    >Create New Product</button>
+                    <button
+                      class="mode-tab"
+                      class:active={formData.mode === 'map'}
+                      onclick={() => formData.mode = 'map'}
+                    >Map to Existing</button>
                   </div>
 
-                  {#if formData.creatingNewGroup}
-                    <div class="new-group-form">
-                      <h5>New Group Details</h5>
-                      <div class="form-row">
-                        <label>
-                          Group Label:
-                          <input
-                            type="text"
-                            bind:value={formData.newGroupLabel}
-                            placeholder="e.g., Ethiopia Natural"
-                            class="text-input"
-                          />
-                        </label>
-                        <label>
-                          Type:
-                          <select bind:value={formData.newGroupType} class="select-input">
-                            <option value="single_origin">Single Origin</option>
-                            <option value="blend">Blend</option>
-                          </select>
-                        </label>
-                      </div>
-                      <div class="form-row">
-                        <label>
-                          Batch Type:
-                          <select bind:value={formData.newGroupBatchType} class="select-input">
-                            {#each batchTypes as batchType}
-                              <option value={batchType.batch_type}>
-                                {batchType.batch_type} ({batchType.weight_lbs} lb)
-                              </option>
-                            {/each}
-                          </select>
-                        </label>
-                        <label>
-                          Roast Loss %:
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            bind:value={formData.newGroupRoastLoss}
-                            class="number-input"
-                          />
-                        </label>
-                      </div>
+                  {#if formData.mode === 'map'}
+                    <div class="form-row">
+                      <label>
+                        Map to product:
+                        <select
+                          bind:value={formData.mapToProductId}
+                          class="group-select"
+                        >
+                          <option value="">Select a product...</option>
+                          {#each products.filter(p => p.active) as product}
+                            <option value={product.id}>
+                              {product.name} ({groups.find(g => g.id === product.group_id)?.label || '—'})
+                            </option>
+                          {/each}
+                        </select>
+                      </label>
                     </div>
+                    <p class="alias-hint">
+                      This will create an alias so "{match.productName}" automatically maps to the selected product on future imports.
+                    </p>
+                  {:else}
+                    <div class="form-row">
+                      <label>
+                        Product Name:
+                        <input
+                          type="text"
+                          bind:value={formData.cleanName}
+                          placeholder="e.g., Sure Thing - 10.9oz"
+                          class="text-input"
+                        />
+                      </label>
+                    </div>
+                    {#if formData.cleanName.toLowerCase() !== match.productName.toLowerCase()}
+                      <p class="alias-hint">
+                        An alias will be created: "{match.productName}" &rarr; "{formData.cleanName}"
+                      </p>
+                    {/if}
+                    <div class="form-row">
+                      <label>
+                        Weight (lbs):
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          bind:value={formData.lbs}
+                          class="weight-input"
+                        />
+                      </label>
+                      <label>
+                        Roast Group:
+                        <select
+                          bind:value={formData.groupId}
+                          onchange={(e) => {
+                            const target = e.target as HTMLSelectElement;
+                            formData.creatingNewGroup = target.value === '__new__';
+                          }}
+                          class="group-select"
+                        >
+                          <option value="__new__">+ Create New Group</option>
+                          {#each groups as group}
+                            <option value={group.id}>{group.label}</option>
+                          {/each}
+                        </select>
+                      </label>
+                    </div>
+
+                    {#if formData.creatingNewGroup}
+                      <div class="new-group-form">
+                        <h5>New Group Details</h5>
+                        <div class="form-row">
+                          <label>
+                            Group Label:
+                            <input
+                              type="text"
+                              bind:value={formData.newGroupLabel}
+                              placeholder="e.g., Ethiopia Natural"
+                              class="text-input"
+                            />
+                          </label>
+                          <label>
+                            Type:
+                            <select bind:value={formData.newGroupType} class="select-input">
+                              <option value="single_origin">Single Origin</option>
+                              <option value="blend">Blend</option>
+                            </select>
+                          </label>
+                        </div>
+                        <div class="form-row">
+                          <label>
+                            Batch Type:
+                            <select bind:value={formData.newGroupBatchType} class="select-input">
+                              {#each batchTypes as batchType}
+                                <option value={batchType.batch_type}>
+                                  {batchType.batch_type} ({batchType.weight_lbs} lb)
+                                </option>
+                              {/each}
+                            </select>
+                          </label>
+                          <label>
+                            Roast Loss %:
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              bind:value={formData.newGroupRoastLoss}
+                              class="number-input"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    {/if}
                   {/if}
 
                   <div class="form-actions">
                     <button type="button" class="btn-confirm" onclick={() => confirmAddSku(match.productName)}>
-                      {formData.creatingNewGroup ? 'Create Group & Add Product' : 'Confirm Add'}
+                      {#if formData.mode === 'map'}
+                        Create Alias
+                      {:else if formData.creatingNewGroup}
+                        Create Group, Product & Alias
+                      {:else if formData.cleanName.toLowerCase() !== match.productName.toLowerCase()}
+                        Create Product & Alias
+                      {:else}
+                        Create Product
+                      {/if}
                     </button>
                     <button type="button" class="btn-cancel" onclick={() => cancelAddSku(match.productName)}>
                       Cancel
@@ -527,8 +636,11 @@
                 </div>
               {:else}
                 <div class="product-actions">
-                  <button type="button" class="btn-add" onclick={() => startAddSku(match.productName)}>
-                    Add to Catalog
+                  <button type="button" class="btn-add" onclick={() => startAddSku(match.productName, 'create')}>
+                    Add Product
+                  </button>
+                  <button type="button" class="btn-add" onclick={() => startAddSku(match.productName, 'map')}>
+                    Map to Existing
                   </button>
                   <button type="button" class="btn-ignore" onclick={() => ignoreSku(match.productName)}>
                     Ignore
@@ -912,6 +1024,43 @@
   .product-actions {
     display: flex;
     gap: 0.5rem;
+  }
+
+  .mode-tabs {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+  }
+
+  .mode-tab:last-child {
+    border-right: none;
+  }
+
+  .mode-tab.active {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .alias-hint {
+    font-size: 11px;
+    color: var(--accent);
+    font-style: italic;
+    margin: 4px 0 8px 0;
   }
 
   .btn-add,
