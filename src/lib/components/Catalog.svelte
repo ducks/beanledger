@@ -24,6 +24,8 @@
   let productSearch = $state('');
   let groupSearch = $state('');
   let aliasSearch = $state('');
+  let selectedProductIds = $state<Set<string>>(new Set());
+  let selectedGroupIds = $state<Set<string>>(new Set());
 
   // Roast group form state
   let formId = $state('');
@@ -149,6 +151,66 @@
       console.error('Failed to delete group:', err);
       alert('Network error while deleting group');
     }
+  }
+
+  function toggleProductSelected(id: string) {
+    const next = new Set(selectedProductIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    selectedProductIds = next;
+  }
+
+  function toggleAllProducts() {
+    if (selectedProductIds.size === filteredProducts.length) {
+      selectedProductIds = new Set();
+    } else {
+      selectedProductIds = new Set(filteredProducts.map(p => p.id));
+    }
+  }
+
+  async function deleteSelectedProducts() {
+    if (selectedProductIds.size === 0) return;
+    if (!confirm(`Delete ${selectedProductIds.size} product(s)?`)) return;
+
+    let failed = 0;
+    for (const id of selectedProductIds) {
+      const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) failed++;
+    }
+
+    selectedProductIds = new Set();
+    await loadData();
+    onUpdate();
+    if (failed > 0) alert(`${failed} product(s) could not be deleted (may have active orders).`);
+  }
+
+  function toggleGroupSelected(id: string) {
+    const next = new Set(selectedGroupIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    selectedGroupIds = next;
+  }
+
+  function toggleAllGroups() {
+    if (selectedGroupIds.size === filteredGroups.length) {
+      selectedGroupIds = new Set();
+    } else {
+      selectedGroupIds = new Set(filteredGroups.map(g => g.id));
+    }
+  }
+
+  async function deleteSelectedGroups() {
+    if (selectedGroupIds.size === 0) return;
+    if (!confirm(`Delete ${selectedGroupIds.size} roast group(s) and all their products?`)) return;
+
+    let failed = 0;
+    for (const id of selectedGroupIds) {
+      const res = await fetch(`/api/groups?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) failed++;
+    }
+
+    selectedGroupIds = new Set();
+    await loadData();
+    onUpdate();
+    if (failed > 0) alert(`${failed} group(s) could not be deleted (may have active orders).`);
   }
 
   async function toggleProductActive(product: Product) {
@@ -409,10 +471,25 @@
           />
           <button class="add-button" onclick={openCreateProductForm}>+ Add Product</button>
         </div>
+        {#if selectedProductIds.size > 0}
+          <div class="bulk-bar">
+            <span>{selectedProductIds.size} selected</span>
+            <button class="delete-button" onclick={deleteSelectedProducts}>
+              Delete Selected
+            </button>
+          </div>
+        {/if}
         <div class="table-container">
           <table>
             <thead>
               <tr>
+                <th class="checkbox-col">
+                  <input
+                    type="checkbox"
+                    checked={selectedProductIds.size === filteredProducts.length && filteredProducts.length > 0}
+                    onchange={toggleAllProducts}
+                  />
+                </th>
                 <th>Name</th>
                 <th>Weight</th>
                 <th>Roast Group</th>
@@ -423,6 +500,13 @@
             <tbody>
               {#each filteredProducts as product}
                 <tr class:inactive={!product.active}>
+                  <td class="checkbox-col">
+                    <input
+                      type="checkbox"
+                      checked={selectedProductIds.has(product.id)}
+                      onchange={() => toggleProductSelected(product.id)}
+                    />
+                  </td>
                   <td>{product.name}</td>
                   <td>{product.lbs} lb</td>
                   <td>{groups.find((g) => g.id === product.group_id)?.label || '—'}</td>
@@ -460,10 +544,25 @@
           />
           <button class="add-button" onclick={openCreateGroupForm}>+ Add Roast Group</button>
         </div>
+        {#if selectedGroupIds.size > 0}
+          <div class="bulk-bar">
+            <span>{selectedGroupIds.size} selected</span>
+            <button class="delete-button" onclick={deleteSelectedGroups}>
+              Delete Selected
+            </button>
+          </div>
+        {/if}
         <div class="table-container">
           <table>
             <thead>
               <tr>
+                <th class="checkbox-col">
+                  <input
+                    type="checkbox"
+                    checked={selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0}
+                    onchange={toggleAllGroups}
+                  />
+                </th>
                 <th>ID</th>
                 <th>Label</th>
                 <th>Batch Type</th>
@@ -476,6 +575,13 @@
             <tbody>
               {#each filteredGroups as group}
                 <tr class:inactive={!group.active}>
+                  <td class="checkbox-col">
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupIds.has(group.id)}
+                      onchange={() => toggleGroupSelected(group.id)}
+                    />
+                  </td>
                   <td>{group.id}</td>
                   <td>{group.label}</td>
                   <td>{group.batch_type}</td>
@@ -937,6 +1043,29 @@
     color: var(--text-muted);
     margin: -8px 0 16px 0;
     line-height: 1.5;
+  }
+
+  .bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  .checkbox-col {
+    width: 32px;
+    text-align: center;
+  }
+
+  .checkbox-col input {
+    cursor: pointer;
   }
 
   .table-container {
