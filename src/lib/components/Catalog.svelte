@@ -128,9 +128,22 @@
 
   async function deleteProduct(id: string) {
     if (!confirm('Delete this product?')) return;
-    await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
-    await loadData();
-    onUpdate();
+
+    try {
+      const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete product');
+        return;
+      }
+
+      await loadData();
+      onUpdate();
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+      alert('Network error while deleting product');
+    }
   }
 
   async function deleteGroup(id: string) {
@@ -171,16 +184,29 @@
     if (selectedProductIds.size === 0) return;
     if (!confirm(`Delete ${selectedProductIds.size} product(s)?`)) return;
 
+    const errorMessages = new Set<string>();
     let failed = 0;
     for (const id of selectedProductIds) {
-      const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) failed++;
+      try {
+        const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          failed++;
+          const data = await res.json().catch(() => ({}));
+          if (data.error) errorMessages.add(data.error);
+        }
+      } catch {
+        failed++;
+        errorMessages.add('Network error');
+      }
     }
 
     selectedProductIds = new Set();
     await loadData();
     onUpdate();
-    if (failed > 0) alert(`${failed} product(s) could not be deleted (may have active orders).`);
+    if (failed > 0) {
+      const detail = errorMessages.size > 0 ? `\n\n${[...errorMessages].join('\n')}` : '';
+      alert(`${failed} product(s) could not be deleted.${detail}`);
+    }
   }
 
   function toggleGroupSelected(id: string) {
