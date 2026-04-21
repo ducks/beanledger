@@ -15,6 +15,18 @@
       theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
     document.documentElement.setAttribute('data-theme', theme);
+
+    // Prevent scroll-wheel from changing number input values while focused.
+    // Without this, scrolling the page over a focused number field silently
+    // increments/decrements it, which is a common cause of wrong quantities.
+    const onWheel = (e: WheelEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && el.tagName === 'INPUT' && (el as HTMLInputElement).type === 'number') {
+        (el as HTMLInputElement).blur();
+      }
+    };
+    window.addEventListener('wheel', onWheel, { passive: true });
+    return () => window.removeEventListener('wheel', onWheel);
   });
 
   function toggleTheme() {
