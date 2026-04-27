@@ -19,7 +19,6 @@
   let activeDay: ProductionDay | null = $state(null);
   let showCatalog = $state(false);
   let showSettings = $state(false);
-  let units = $state<'lbs' | 'kg'>('lbs');
 
   onMount(async () => {
     await loadDays();
@@ -289,11 +288,7 @@
 {/if}
 
 {#if showSettings}
-  <Settings
-    {units}
-    onClose={() => (showSettings = false)}
-    onUnitsChange={(newUnits) => (units = newUnits)}
-  />
+  <Settings onClose={() => (showSettings = false)} />
 {/if}
 
 <style>

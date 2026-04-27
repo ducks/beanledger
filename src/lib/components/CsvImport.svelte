@@ -3,6 +3,8 @@
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
   import type { RoastGroup, BatchOverride, Product, CsvFormat } from '$lib/types';
+  import { units } from '$lib/stores/units';
+  import { formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
 
   let {
     productionDate,
@@ -542,12 +544,16 @@
                     {/if}
                     <div class="form-row">
                       <label>
-                        Weight (lbs):
+                        Weight ({unitLabel($units)}):
                         <input
                           type="number"
                           step="0.01"
                           min="0"
-                          bind:value={formData.lbs}
+                          value={formData.lbs ? toUnits(formData.lbs, $units).toFixed(4).replace(/\.?0+$/, '') : ''}
+                          oninput={(e) => {
+                            const v = parseWeight((e.target as HTMLInputElement).value, $units);
+                            formData.lbs = isFinite(v) ? v : 0;
+                          }}
                           class="weight-input"
                         />
                       </label>
@@ -596,7 +602,7 @@
                             <select bind:value={formData.newGroupBatchType} class="select-input">
                               {#each batchTypes as batchType}
                                 <option value={batchType.batch_type}>
-                                  {batchType.batch_type} ({batchType.weight_lbs} lb)
+                                  {batchType.batch_type} ({formatWeight(batchType.weight_lbs, $units)})
                                 </option>
                               {/each}
                             </select>

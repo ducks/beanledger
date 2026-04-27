@@ -104,7 +104,7 @@
       if (!product) continue;
 
       const sizeKey = product.lbs;
-      const sizeLabel = product.lbs >= 1 ? `${product.lbs} lb` : `${(product.lbs * 16).toFixed(1)} oz`;
+      const sizeLabel = formatWeight(product.lbs, units);
 
       if (!sizeMap.has(sizeKey)) {
         sizeMap.set(sizeKey, { size: sizeLabel, qty: 0 });

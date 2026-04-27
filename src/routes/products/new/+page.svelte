@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import type { RoastGroup } from '$lib/types';
+  import { units } from '$lib/stores/units';
+  import { parseWeight, unitLabel } from '$lib/calc';
 
   let groups = $state<RoastGroup[]>([]);
   let loading = $state(false);
@@ -32,7 +34,7 @@
         body: JSON.stringify({
           id: `p${Date.now()}`,
           name: form.name,
-          lbs: parseFloat(form.lbs),
+          lbs: parseWeight(form.lbs, $units),
           group_id: form.group_id,
           active: true,
           created_at: new Date().toISOString().slice(0, 10)
@@ -92,7 +94,7 @@
     </div>
 
     <div class="form-group">
-      <label for="lbs">Weight (lbs)</label>
+      <label for="lbs">Weight ({unitLabel($units)})</label>
       <input
         type="number"
         id="lbs"
@@ -100,7 +102,7 @@
         step="0.01"
         min="0.01"
         required
-        placeholder="e.g., 5.0"
+        placeholder={$units === 'kg' ? 'e.g., 2.27' : 'e.g., 5.0'}
         disabled={loading}
       />
     </div>

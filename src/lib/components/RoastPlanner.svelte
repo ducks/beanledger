@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { RoastGroup, Product, Order, BatchOverride } from '$lib/types';
-  import { calcGroup, formatWeight } from '$lib/calc';
+  import { calcGroup, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
+  import { units } from '$lib/stores/units';
   import CsvImport from './CsvImport.svelte';
   import ImportHistory from './ImportHistory.svelte';
   import PickList from './PickList.svelte';
@@ -24,7 +25,6 @@
   let search = $state('');
   let qty = $state(1);
   let dropOpen = $state(false);
-  let units = $state<'lbs' | 'kg'>('lbs');
   let productionDate = $state(initialDate);
   let previousDate = $state(productionDate);
   let sortBy = $state<'type' | 'label' | 'batch_type' | 'needed'>('type');
@@ -462,7 +462,7 @@
         <div class="stats">
           <div class="stat">
             <div class="stat-label">Total</div>
-            <div class="stat-value">{formatWeight(calc.totalLbs, units)}</div>
+            <div class="stat-value">{formatWeight(calc.totalLbs, $units)}</div>
           </div>
 
           <div class="stat">
@@ -471,16 +471,19 @@
               type="number"
               step="0.01"
               class="leftover-input"
-              value={leftovers[group.id] ?? 0}
-              onchange={(e) => updateLeftover(group.id, parseFloat(e.currentTarget.value) || 0)}
+              value={toUnits(leftovers[group.id] ?? 0, $units).toFixed(2)}
+              onchange={(e) => {
+                const lbs = parseWeight(e.currentTarget.value, $units);
+                updateLeftover(group.id, isFinite(lbs) ? lbs : 0);
+              }}
               onwheel={(e) => e.currentTarget.blur()}
             />
-            <span class="unit">lb</span>
+            <span class="unit">{unitLabel($units)}</span>
           </div>
 
           <div class="stat">
             <div class="stat-label">Needed</div>
-            <div class="stat-value accent">{needsRoast ? formatWeight(calc.needed, units) : '—'}</div>
+            <div class="stat-value accent">{needsRoast ? formatWeight(calc.needed, $units) : '—'}</div>
             {#if needsRoast && calc.roastLossPct > 0}
               <div class="stat-note">green ({calc.roastLossPct}% loss)</div>
             {/if}
@@ -491,7 +494,7 @@
           <div class="batches">
             <div class="batch-info">
               <div class="batch-label">Predicted Leftover</div>
-              <div class="batch-precise">{formatWeight(calc.predictedLeftover, units)}</div>
+              <div class="batch-precise">{formatWeight(calc.predictedLeftover, $units)}</div>
             </div>
             <div class="batch-rounded">
               <div class="batch-label">Batches</div>
@@ -502,7 +505,7 @@
           <div class="batches">
             <div class="batch-info">
               <div class="batch-label">Predicted Leftover</div>
-              <div class="batch-precise">{formatWeight(leftovers[group.id] - calc.totalLbs, units)}</div>
+              <div class="batch-precise">{formatWeight(leftovers[group.id] - calc.totalLbs, $units)}</div>
             </div>
             <div class="batch-note">
               <div class="batch-label">From Stock</div>
@@ -533,7 +536,7 @@
                       {/if}
                     </div>
                     <div class="product-qty">×{order.qty}</div>
-                    <div class="product-weight">{formatWeight(product.lbs * order.qty, units)}</div>
+                    <div class="product-weight">{formatWeight(product.lbs * order.qty, $units)}</div>
                     <button
                       class="delete-product-btn"
                       onclick={() => deleteOrder(order.id)}
@@ -558,7 +561,7 @@
     {products}
     {groups}
     {productionDate}
-    {units}
+    units={$units}
     batchesNeeded={roastNeeded}
     onClose={() => { showPickList = false; loadData(); }}
   />
@@ -570,7 +573,7 @@
     {products}
     {groups}
     {leftovers}
-    {units}
+    units={$units}
     onClose={() => (showReports = false)}
   />
 {/if}
@@ -584,9 +587,7 @@
 
 {#if showSettings}
   <Settings
-    {units}
     onClose={() => (showSettings = false)}
-    onUnitsChange={(newUnits) => (units = newUnits)}
     onBatchOverridesChange={loadBatchOverrides}
   />
 {/if}
@@ -595,7 +596,7 @@
   <LeftoverConfirmModal
     groups={plan}
     {leftovers}
-    {units}
+    units={$units}
     onConfirm={confirmFinishRoastDay}
     onCancel={() => (showLeftoverConfirm = false)}
     onUpdateLeftover={updateLeftover}
@@ -638,7 +639,7 @@
                     onclick={() => { selectedProduct = product; search = product.name; dropOpen = false; }}
                   >
                     {product.name}
-                    <span class="meta">{product.lbs} lb</span>
+                    <span class="meta">{formatWeight(product.lbs, $units)}</span>
                   </button>
                 {/each}
               </div>

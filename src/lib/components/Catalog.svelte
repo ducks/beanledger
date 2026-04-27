@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
   import CsvFormatBuilder from './CsvFormatBuilder.svelte';
+  import { units } from '$lib/stores/units';
+  import { formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
 
   let {
     onClose,
@@ -534,7 +536,7 @@
                     />
                   </td>
                   <td>{product.name}</td>
-                  <td>{product.lbs} lb</td>
+                  <td>{formatWeight(product.lbs, $units)}</td>
                   <td>{groups.find((g) => g.id === product.group_id)?.label || '—'}</td>
                   <td>
                     <button
@@ -829,7 +831,7 @@
             <select bind:value={formBatchType}>
               {#each batchTypes as batchType}
                 <option value={batchType.batch_type}>
-                  {batchType.batch_type} ({batchType.weight_lbs} lb)
+                  {batchType.batch_type} ({formatWeight(batchType.weight_lbs, $units)})
                 </option>
               {/each}
             </select>
@@ -898,13 +900,17 @@
         </div>
 
         <div class="form-group">
-          <label>Weight (lbs)</label>
+          <label>Weight ({unitLabel($units)})</label>
           <input
             type="number"
-            bind:value={productFormLbs}
+            value={productFormLbs ? toUnits(productFormLbs, $units).toFixed(4).replace(/\.?0+$/, '') : ''}
+            oninput={(e) => {
+              const lbs = parseWeight(e.currentTarget.value, $units);
+              productFormLbs = isFinite(lbs) ? lbs : 0;
+            }}
             step="0.01"
             min="0"
-            placeholder="e.g., 0.625"
+            placeholder={$units === 'kg' ? 'e.g., 0.284' : 'e.g., 0.625'}
           />
         </div>
 
