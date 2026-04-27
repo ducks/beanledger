@@ -2,10 +2,19 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import type { LayoutData } from './$types';
+  import { units } from '$lib/stores/units';
 
   let { data, children }: { data: LayoutData; children: any } = $props();
 
   let theme = $state<'light' | 'dark'>('light');
+
+  // Hydrate the units store from the server-loaded user preference.
+  // Re-runs if data.user changes (login, logout).
+  $effect(() => {
+    if (data.user?.preferred_units) {
+      units.set(data.user.preferred_units);
+    }
+  });
 
   onMount(() => {
     const stored = localStorage.getItem('theme') as 'light' | 'dark' | null;

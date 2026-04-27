@@ -83,11 +83,14 @@ export interface Tenant {
   created_at: string;
 }
 
+export type Units = 'lbs' | 'kg';
+
 export interface User {
   id: string;
   username: string;
   email: string;
   tenant_id: string;
+  preferred_units: Units;
   created_at: string;
 }
 

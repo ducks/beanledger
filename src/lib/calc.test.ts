@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcGroup, formatWeight } from './calc';
+import { calcGroup, formatWeight, parseWeight, toUnits, unitLabel } from './calc';
 import type { RoastGroup, Product, Order } from './types';
 
 describe('formatWeight', () => {
@@ -16,6 +16,51 @@ describe('formatWeight', () => {
   it('respects custom decimal places', () => {
     expect(formatWeight(10.5678, 'lbs', 4)).toBe('10.5678 lb');
     expect(formatWeight(10.5678, 'kg', 4)).toBe('4.7935 kg');
+  });
+
+  it('omits unit suffix when withUnit=false', () => {
+    expect(formatWeight(10.5, 'lbs', 2, false)).toBe('10.50');
+    expect(formatWeight(10, 'kg', 2, false)).toBe('4.54');
+  });
+});
+
+describe('parseWeight', () => {
+  it('returns lbs unchanged when units are lbs', () => {
+    expect(parseWeight(10.5, 'lbs')).toBe(10.5);
+    expect(parseWeight('0.625', 'lbs')).toBe(0.625);
+  });
+
+  it('converts kg input to lbs', () => {
+    expect(parseWeight(1, 'kg')).toBeCloseTo(2.20462, 4);
+    expect(parseWeight('10', 'kg')).toBeCloseTo(22.0462, 3);
+  });
+
+  it('returns NaN for empty or non-numeric input', () => {
+    expect(parseWeight('', 'lbs')).toBeNaN();
+    expect(parseWeight('abc', 'kg')).toBeNaN();
+  });
+
+  it('round-trips with formatWeight', () => {
+    const lbs = 1.10231; // ≈ 0.5 kg
+    const displayed = formatWeight(lbs, 'kg', 4, false);
+    const parsedBack = parseWeight(displayed, 'kg');
+    expect(parsedBack).toBeCloseTo(lbs, 4);
+  });
+});
+
+describe('toUnits', () => {
+  it('returns lbs unchanged for lbs', () => {
+    expect(toUnits(5, 'lbs')).toBe(5);
+  });
+  it('converts to kg', () => {
+    expect(toUnits(1, 'kg')).toBeCloseTo(0.453592, 6);
+  });
+});
+
+describe('unitLabel', () => {
+  it('returns label suffix', () => {
+    expect(unitLabel('lbs')).toBe('lb');
+    expect(unitLabel('kg')).toBe('kg');
   });
 });
 
