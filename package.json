@@ -13,9 +13,13 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "e2e:server": "node scripts/migrate.js && vite dev --port 4173",
+    "test:e2e": "node scripts/run-e2e.js",
+    "test:e2e:ui": "node scripts/run-e2e.js --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@sveltejs/adapter-node": "^5.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
