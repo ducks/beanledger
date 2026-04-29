@@ -6,13 +6,12 @@ import { test, expect, TEST_USER } from './fixtures';
  * instead of pretending the delete succeeded.
  */
 test('shows the server error when a delete is refused', async ({ page }) => {
-  // Set up: log in, create a product + active production day + an order
-  // so the delete will be refused.
-  await page.goto('/login');
-  await page.getByLabel(/username/i).fill(TEST_USER.username);
-  await page.getByLabel(/password/i).fill(TEST_USER.password);
-  await page.getByRole('button', { name: /log in|sign in/i }).click();
-  await expect(page).toHaveURL(/\/$|\/planner|\/dashboard/);
+  // Log in via the API so the spec doesn't depend on the form's
+  // submit handler (separate bug, tracked elsewhere).
+  const login = await page.request.post('/api/auth/login', {
+    data: { username: TEST_USER.username, password: TEST_USER.password }
+  });
+  expect(login.status()).toBe(200);
 
   // Seed via API so we don't depend on UI flow for the precondition.
   const today = new Date().toISOString().slice(0, 10);
