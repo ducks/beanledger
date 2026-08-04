@@ -528,6 +528,24 @@
                   {:else}
                     <div class="form-row">
                       <label>
+                        Roast Group:
+                        <select
+                          bind:value={formData.groupId}
+                          onchange={(e) => {
+                            const target = e.target as HTMLSelectElement;
+                            formData.creatingNewGroup = target.value === '__new__';
+                          }}
+                          class="group-select"
+                        >
+                          <option value="__new__">+ Create New Group</option>
+                          {#each groups as group}
+                            <option value={group.id}>{group.label}</option>
+                          {/each}
+                        </select>
+                      </label>
+                    </div>
+                    <div class="form-row">
+                      <label>
                         Product Name:
                         <input
                           type="text"
@@ -556,22 +574,6 @@
                           }}
                           class="weight-input"
                         />
-                      </label>
-                      <label>
-                        Roast Group:
-                        <select
-                          bind:value={formData.groupId}
-                          onchange={(e) => {
-                            const target = e.target as HTMLSelectElement;
-                            formData.creatingNewGroup = target.value === '__new__';
-                          }}
-                          class="group-select"
-                        >
-                          <option value="__new__">+ Create New Group</option>
-                          {#each groups as group}
-                            <option value={group.id}>{group.label}</option>
-                          {/each}
-                        </select>
                       </label>
                     </div>
 
