@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calcGroup,
   formatPackageSize,
+  formatPackageSizeGrams,
   formatWeight,
   parseWeight,
   toUnits,
@@ -65,6 +66,12 @@ describe('formatPackageSize', () => {
   it('uses grams for sub-kilogram metric packages', () => {
     expect(formatPackageSize(0.75, 'kg')).toBe('340.2 g');
     expect(formatPackageSize(1 / 0.453592, 'kg')).toBe('1 kg');
+  });
+
+  it('formats normalized packaging capacities for either unit preference', () => {
+    expect(formatPackageSizeGrams(340, 'lbs')).toBe('12 oz');
+    expect(formatPackageSizeGrams(340, 'kg')).toBe('340 g');
+    expect(formatPackageSizeGrams(1000, 'kg')).toBe('1 kg');
   });
 });
 

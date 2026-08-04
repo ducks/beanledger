@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Order, Product, RoastGroup } from '$lib/types';
-  import { calcGroup, formatPackageSize, formatWeight } from '$lib/calc';
+  import type { Order, PackagingType, Product, RoastGroup, UntrackedPackagingRequirement } from '$lib/types';
+  import { calcGroup, formatPackageSize, formatPackageSizeGrams, formatWeight } from '$lib/calc';
 
   let {
     orders,
     products,
     groups,
     leftovers,
+    productionDate,
     units,
     onClose
   }: {
@@ -15,6 +16,7 @@
     products: Product[];
     groups: RoastGroup[];
     leftovers: Record<string, number>;
+    productionDate: string;
     units: 'lbs' | 'kg';
     onClose: () => void;
   } = $props();
@@ -23,11 +25,35 @@
   let dateTo = $state('');
   let rangeOrders = $state<Order[]>([]);
   let loading = $state(false);
+  let packaging = $state<PackagingType[]>([]);
+  let untrackedPackaging = $state<UntrackedPackagingRequirement[]>([]);
+  let packagingStatus = $state<string | null>(null);
 
   onMount(() => {
     // Start with current orders
     rangeOrders = orders;
+    fetchPackagingReport();
   });
+
+  async function fetchPackagingReport() {
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom || dateTo) {
+        if (dateFrom) params.set('dateFrom', dateFrom);
+        if (dateTo) params.set('dateTo', dateTo);
+      } else {
+        params.set('date', productionDate);
+      }
+      const response = await fetch(`/api/packaging?${params}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      packaging = data.packaging ?? [];
+      untrackedPackaging = data.untracked ?? [];
+      packagingStatus = data.day_status ?? null;
+    } catch (err) {
+      console.error('Failed to fetch packaging report:', err);
+    }
+  }
 
   async function fetchRangeOrders() {
     if (!dateFrom && !dateTo) {
@@ -43,6 +69,7 @@
 
       const res = await fetch(`/api/orders?${params}`);
       rangeOrders = await res.json();
+      await fetchPackagingReport();
     } catch (err) {
       console.error('Failed to fetch orders:', err);
       rangeOrders = orders;
@@ -55,6 +82,7 @@
     dateFrom = '';
     dateTo = '';
     rangeOrders = orders;
+    fetchPackagingReport();
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -118,6 +146,7 @@
       return bLbs - aLbs;
     });
   });
+
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
@@ -168,7 +197,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-label">Total Units</div>
-          <div class="stat-value">{orders.reduce((s, o) => s + o.qty, 0)}</div>
+          <div class="stat-value">{rangeOrders.reduce((s, o) => s + o.qty, 0)}</div>
         </div>
       </div>
 
@@ -213,6 +242,56 @@
           {/each}
         </div>
       </div>
+
+      <!-- Packaging Inventory -->
+      {#if packaging.length > 0 || untrackedPackaging.length > 0}
+        <div class="section">
+          <div class="section-title">Packaging Inventory</div>
+          {#if untrackedPackaging.length > 0}
+            <div class="packaging-warning">
+              Not tracked: {untrackedPackaging.map((item) => `${item.required_count} × ${formatPackageSizeGrams(item.size_grams, units)}`).join(', ')}
+            </div>
+          {/if}
+          {#if packaging.length > 0}
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Bag Type</th>
+                    <th>Size</th>
+                    {#if packagingStatus === 'completed' || packagingStatus === 'range'}
+                      <th>Starting</th>
+                      <th>Filled</th>
+                      <th>Remaining</th>
+                    {:else}
+                      <th>On Hand</th>
+                      <th>Ordered</th>
+                      <th>Projected</th>
+                    {/if}
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each packaging as item}
+                    <tr>
+                      <td>{item.label}</td>
+                      <td>{formatPackageSizeGrams(item.size_grams, units)}</td>
+                      {#if packagingStatus === 'completed' || packagingStatus === 'range'}
+                        <td>{item.starting_count ?? '—'}</td>
+                        <td>{item.filled_count ?? 0}</td>
+                        <td class:shortage={(item.ending_count ?? 0) < 0}>{item.ending_count ?? '—'}</td>
+                      {:else}
+                        <td>{item.on_hand_count}</td>
+                        <td>{item.required_count ?? 0}</td>
+                        <td class:shortage={(item.projected_remaining ?? 0) < 0}>{item.projected_remaining ?? item.on_hand_count}</td>
+                      {/if}
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
   </div>
 </div>
@@ -303,6 +382,20 @@
 
   .section {
     margin-bottom: 24px;
+  }
+
+  .packaging-warning {
+    margin-bottom: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--warning, #c69a45);
+    border-radius: 4px;
+    color: var(--warning, #d6ad5c);
+    font-size: 10px;
+  }
+
+  .shortage {
+    color: var(--danger, #d87373);
+    font-weight: 700;
   }
 
   .section-title {

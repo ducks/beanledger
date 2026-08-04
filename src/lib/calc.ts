@@ -92,22 +92,30 @@ function compact(value: number, decimals: number): string {
   return value.toFixed(decimals).replace(/\.?0+$/, '');
 }
 
+const GRAMS_PER_LB = 453.59237;
+
 /**
  * Format the capacity of one retail package. Small imperial packages are
  * conventionally labeled in ounces, while small metric packages use grams.
  * Larger values stay in the user's preferred roast-weight unit.
  */
 export function formatPackageSize(lbs: number, units: 'lbs' | 'kg'): string {
+  return formatPackageSizeGrams(lbs * GRAMS_PER_LB, units);
+}
+
+/** Format a normalized packaging capacity stored as whole grams. */
+export function formatPackageSizeGrams(grams: number, units: 'lbs' | 'kg'): string {
   if (units === 'kg') {
-    const kilograms = lbs * 0.453592;
+    const kilograms = grams / 1000;
     return kilograms < 1
-      ? `${compact(kilograms * 1000, 1)} g`
+      ? `${compact(grams, 1)} g`
       : `${compact(kilograms, 2)} kg`;
   }
 
-  return lbs < 1
-    ? `${compact(lbs * 16, 1)} oz`
-    : `${compact(lbs, 2)} lb`;
+  const pounds = grams / GRAMS_PER_LB;
+  return pounds < 1
+    ? `${compact(pounds * 16, 1)} oz`
+    : `${compact(pounds, 2)} lb`;
 }
 
 /**

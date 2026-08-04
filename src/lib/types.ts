@@ -53,6 +53,24 @@ export interface ProductionSummary {
   saved_at: string;
 }
 
+export interface PackagingType {
+  id: string;
+  label: string;
+  size_grams: number;
+  on_hand_count: number;
+  active: boolean;
+  required_count?: number;
+  projected_remaining?: number;
+  starting_count?: number | null;
+  filled_count?: number;
+  ending_count?: number | null;
+}
+
+export interface UntrackedPackagingRequirement {
+  size_grams: number;
+  required_count: number;
+}
+
 export interface ImportAlias {
   id: string;
   alias_name: string;

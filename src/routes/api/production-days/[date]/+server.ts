@@ -1,6 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { query } from '$lib/db';
+import { withTransaction } from '$lib/db';
+import {
+  commitPackagingUsage,
+  lockProductionDay,
+  reversePackagingUsage
+} from '$lib/server/packaging';
 
 interface ProductionDay {
   production_date: string;
@@ -28,32 +33,52 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
       return json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    // If setting to active, check for existing active day
-    if (status === 'active') {
-      const activeCheck = await query<ProductionDay>(
-        'SELECT production_date FROM production_days WHERE tenant_id = $1 AND status = $2 AND production_date != $3',
-        [locals.tenant.id, 'active', date]
-      );
+    const result = await withTransaction(async (client) => {
+      const day = await lockProductionDay(client, locals.tenant!.id, date);
+      if (!day) return { kind: 'not-found' as const };
 
-      if (activeCheck.rows.length > 0) {
-        return json(
-          {
-            error: 'Already have an active roast day',
+      if (status === 'active') {
+        const activeCheck = await client.query<ProductionDay>(
+          `SELECT production_date
+           FROM production_days
+           WHERE tenant_id = $1 AND status = 'active' AND production_date != $2`,
+          [locals.tenant!.id, date]
+        );
+        if (activeCheck.rows.length > 0) {
+          return {
+            kind: 'active-conflict' as const,
             activeDay: activeCheck.rows[0].production_date
-          },
-          { status: 409 }
+          };
+        }
+      }
+
+      if (day.status !== 'completed' && status === 'completed') {
+        await commitPackagingUsage(client, locals.tenant!.id, date);
+      } else if (day.status === 'completed' && status !== 'completed') {
+        await reversePackagingUsage(client, locals.tenant!.id, date);
+      }
+
+      if (day.status !== status) {
+        await client.query(
+          `UPDATE production_days
+           SET status = $1,
+               completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+           WHERE production_date = $2 AND tenant_id = $3`,
+          [status, date, locals.tenant!.id]
         );
       }
+      return { kind: 'success' as const };
+    });
+
+    if (result.kind === 'not-found') {
+      return json({ error: 'Roast day not found' }, { status: 404 });
     }
-
-    const completed_at = status === 'completed' ? new Date().toISOString() : null;
-
-    await query(
-      `UPDATE production_days
-       SET status = $1, completed_at = $2
-       WHERE production_date = $3 AND tenant_id = $4`,
-      [status, completed_at, date, locals.tenant.id]
-    );
+    if (result.kind === 'active-conflict') {
+      return json(
+        { error: 'Already have an active roast day', activeDay: result.activeDay },
+        { status: 409 }
+      );
+    }
 
     return json({ success: true });
   } catch (err) {
@@ -74,10 +99,22 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
   try {
     const { date } = params;
 
-    await query(
-      'DELETE FROM production_days WHERE production_date = $1 AND tenant_id = $2',
-      [date, locals.tenant.id]
-    );
+    const deleted = await withTransaction(async (client) => {
+      const day = await lockProductionDay(client, locals.tenant!.id, date);
+      if (!day) return false;
+      if (day.status === 'completed') {
+        await reversePackagingUsage(client, locals.tenant!.id, date);
+      }
+      await client.query(
+        'DELETE FROM production_days WHERE production_date = $1 AND tenant_id = $2',
+        [date, locals.tenant!.id]
+      );
+      return true;
+    });
+
+    if (!deleted) {
+      return json({ error: 'Roast day not found' }, { status: 404 });
+    }
 
     return json({ success: true });
   } catch (err) {
