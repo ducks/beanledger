@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import Catalog from './Catalog.svelte';
   import Settings from './Settings.svelte';
+  import Packaging from './Packaging.svelte';
 
   interface ProductionDay {
     production_date: string;
@@ -19,6 +20,7 @@
   let activeDay: ProductionDay | null = $state(null);
   let showCatalog = $state(false);
   let showSettings = $state(false);
+  let showPackaging = $state(false);
 
   onMount(async () => {
     await loadDays();
@@ -179,6 +181,9 @@
       <button class="action-button" onclick={() => showSettings = true}>
         ⚙ Settings
       </button>
+      <button class="action-button" onclick={() => showPackaging = true}>
+        ▤ Packaging
+      </button>
       <button class="primary-button" onclick={startNewDay} disabled={loading}>
         + Start New Roast Day
       </button>
@@ -295,6 +300,10 @@
 
 {#if showSettings}
   <Settings onClose={() => (showSettings = false)} />
+{/if}
+
+{#if showPackaging}
+  <Packaging onClose={() => (showPackaging = false)} />
 {/if}
 
 <style>

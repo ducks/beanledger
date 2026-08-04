@@ -10,6 +10,7 @@
   import Catalog from './Catalog.svelte';
   import Settings from './Settings.svelte';
   import LeftoverConfirmModal from './LeftoverConfirmModal.svelte';
+  import Packaging from './Packaging.svelte';
 
   interface Props {
     initialDate?: string;
@@ -36,6 +37,7 @@
   let showReports = $state(false);
   let showCatalog = $state(false);
   let showSettings = $state(false);
+  let showPackaging = $state(false);
   let showLeftoverConfirm = $state(false);
   let showManualAddModal = $state(false);
   let selectedProduct = $state<Product | null>(null);
@@ -411,6 +413,9 @@
       <button class="action-button" onclick={() => showSettings = true}>
         ⚙ Settings
       </button>
+      <button class="action-button" onclick={() => showPackaging = true}>
+        ▤ Packaging
+      </button>
       {#if dayStatus === 'scheduled'}
         <button class="active-button" onclick={markAsActive}>
           🟢 Mark as Active
@@ -573,6 +578,7 @@
     {products}
     {groups}
     {leftovers}
+    {productionDate}
     units={$units}
     onClose={() => (showReports = false)}
   />
@@ -590,6 +596,10 @@
     onClose={() => (showSettings = false)}
     onBatchOverridesChange={loadBatchOverrides}
   />
+{/if}
+
+{#if showPackaging}
+  <Packaging {productionDate} onClose={() => (showPackaging = false)} />
 {/if}
 
 {#if showLeftoverConfirm}
