@@ -1,9 +1,10 @@
--- Packaging inventory is keyed by bag capacity, not product. A 12 oz product
--- consumes one 12 oz bag regardless of which coffee it contains.
+-- Packaging inventory is keyed by normalized bag capacity, not product. Grams
+-- support both metric and imperial entry without relying on floating-point
+-- pounds as an identifier. A 12 oz product normalizes to a 340 g bag.
 CREATE TABLE packaging_types (
   id UUID NOT NULL DEFAULT gen_random_uuid(),
   label TEXT NOT NULL,
-  size_oz INTEGER NOT NULL CHECK (size_oz > 0),
+  size_grams INTEGER NOT NULL CHECK (size_grams > 0),
   on_hand_count INTEGER NOT NULL DEFAULT 0,
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -13,7 +14,7 @@ CREATE TABLE packaging_types (
 );
 
 CREATE UNIQUE INDEX packaging_types_size_tenant_idx
-  ON packaging_types(tenant_id, size_oz);
+  ON packaging_types(tenant_id, size_grams);
 CREATE INDEX packaging_types_tenant_idx ON packaging_types(tenant_id);
 
 -- A committed snapshot of what was consumed when a roast day was completed.

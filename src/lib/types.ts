@@ -56,7 +56,7 @@ export interface ProductionSummary {
 export interface PackagingType {
   id: string;
   label: string;
-  size_oz: number;
+  size_grams: number;
   on_hand_count: number;
   active: boolean;
   required_count?: number;
@@ -67,7 +67,7 @@ export interface PackagingType {
 }
 
 export interface UntrackedPackagingRequirement {
-  size_oz: number;
+  size_grams: number;
   required_count: number;
 }
 

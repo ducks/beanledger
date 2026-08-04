@@ -6,12 +6,12 @@ interface ProductionDayRow {
 
 interface PackagingTypeRow {
   id: string;
-  size_oz: number;
+  size_grams: number;
   on_hand_count: number;
 }
 
 interface RequiredRow {
-  size_oz: number;
+  size_grams: number;
   required_count: number;
 }
 
@@ -42,35 +42,35 @@ export async function commitPackagingUsage(
 ): Promise<void> {
   const [typesResult, requiredResult] = await Promise.all([
     client.query<PackagingTypeRow>(
-      `SELECT id, size_oz, on_hand_count
+      `SELECT id, size_grams, on_hand_count
        FROM packaging_types
        WHERE tenant_id = $1 AND active = true
-       ORDER BY size_oz
+       ORDER BY size_grams
        FOR UPDATE`,
       [tenantId]
     ),
     client.query<RequiredRow>(
-      `SELECT ROUND(p.lbs * 16)::integer AS size_oz,
+      `SELECT ROUND(p.lbs * 453.59237)::integer AS size_grams,
               SUM(o.qty)::integer AS required_count
        FROM orders o
        JOIN products p
          ON p.id = o.product_id AND p.tenant_id = o.tenant_id
        WHERE o.production_date = $1 AND o.tenant_id = $2
-       GROUP BY ROUND(p.lbs * 16)::integer`,
+       GROUP BY ROUND(p.lbs * 453.59237)::integer`,
       [productionDate, tenantId]
     )
   ]);
 
   const requiredBySize = new Map<number, number>(
     requiredResult.rows.map((row: RequiredRow) => [
-      Number(row.size_oz),
+      Number(row.size_grams),
       Number(row.required_count)
     ])
   );
 
   for (const packaging of typesResult.rows) {
     const startingCount = Number(packaging.on_hand_count);
-    const filledCount = requiredBySize.get(Number(packaging.size_oz)) ?? 0;
+    const filledCount = requiredBySize.get(Number(packaging.size_grams)) ?? 0;
     const endingCount = startingCount - filledCount;
 
     await client.query(

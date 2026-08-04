@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Order, PackagingType, Product, RoastGroup, UntrackedPackagingRequirement } from '$lib/types';
-  import { calcGroup, formatPackageSize, formatWeight } from '$lib/calc';
+  import { calcGroup, formatPackageSize, formatPackageSizeGrams, formatWeight } from '$lib/calc';
 
   let {
     orders,
@@ -147,11 +147,6 @@
     });
   });
 
-  function formatPackageSize(ounces: number) {
-    if (ounces < 16) return `${ounces} oz`;
-    const pounds = ounces / 16;
-    return `${Number.isInteger(pounds) ? pounds : pounds.toFixed(2).replace(/0+$/, '')} lb`;
-  }
 </script>
 
 <div class="modal-backdrop" onclick={handleBackdropClick}>
@@ -254,7 +249,7 @@
           <div class="section-title">Packaging Inventory</div>
           {#if untrackedPackaging.length > 0}
             <div class="packaging-warning">
-              Not tracked: {untrackedPackaging.map((item) => `${item.required_count} × ${formatPackageSize(item.size_oz)}`).join(', ')}
+              Not tracked: {untrackedPackaging.map((item) => `${item.required_count} × ${formatPackageSizeGrams(item.size_grams, units)}`).join(', ')}
             </div>
           {/if}
           {#if packaging.length > 0}
@@ -279,7 +274,7 @@
                   {#each packaging as item}
                     <tr>
                       <td>{item.label}</td>
-                      <td>{formatPackageSize(item.size_oz)}</td>
+                      <td>{formatPackageSizeGrams(item.size_grams, units)}</td>
                       {#if packagingStatus === 'completed' || packagingStatus === 'range'}
                         <td>{item.starting_count ?? '—'}</td>
                         <td>{item.filled_count ?? 0}</td>

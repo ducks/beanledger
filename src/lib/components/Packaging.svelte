@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PackagingType, UntrackedPackagingRequirement } from '$lib/types';
+  import { formatPackageSizeGrams } from '$lib/calc';
+  import { units } from '$lib/stores/units';
 
   let {
     productionDate,
@@ -16,7 +18,7 @@
   let loading = $state(false);
   let error = $state('');
   let label = $state('');
-  let sizeOz = $state<number | undefined>(undefined);
+  let capacity = $state<number | undefined>(undefined);
   let count = $state<number | undefined>(undefined);
   let draftCounts = $state<Record<string, number>>({});
 
@@ -44,19 +46,24 @@
   }
 
   async function addPackaging() {
-    if (!label.trim() || !Number.isInteger(sizeOz) || !Number.isInteger(count)) return;
+    if (!label.trim() || capacity == null || !Number.isFinite(capacity) || capacity <= 0 || !Number.isInteger(count)) return;
     loading = true;
     error = '';
     try {
       const response = await fetch('/api/packaging', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, size_oz: sizeOz, on_hand_count: count })
+        body: JSON.stringify({
+          label,
+          size_value: capacity,
+          size_unit: $units === 'kg' ? 'g' : 'oz',
+          on_hand_count: count
+        })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Unable to add packaging');
       label = '';
-      sizeOz = undefined;
+      capacity = undefined;
       count = undefined;
       await loadPackaging();
     } catch (cause) {
@@ -105,12 +112,6 @@
     }
   }
 
-  function formatSize(ounces: number) {
-    if (ounces < 16) return `${ounces} oz`;
-    const pounds = ounces / 16;
-    return `${Number.isInteger(pounds) ? pounds : pounds.toFixed(2).replace(/0+$/, '')} lb`;
-  }
-
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) onClose();
   }
@@ -137,14 +138,14 @@
           <input bind:value={label} placeholder="12 oz kraft" />
         </label>
         <label>
-          <span>Capacity (oz)</span>
-          <input type="number" min="1" step="1" bind:value={sizeOz} onwheel={(e) => e.currentTarget.blur()} />
+          <span>Capacity ({$units === 'kg' ? 'g' : 'oz'})</span>
+          <input type="number" min="0.1" step={$units === 'kg' ? '1' : '0.1'} bind:value={capacity} onwheel={(e) => e.currentTarget.blur()} />
         </label>
         <label>
           <span>Count on hand</span>
           <input type="number" min="0" step="1" bind:value={count} onwheel={(e) => e.currentTarget.blur()} />
         </label>
-        <button class="primary-button" type="submit" disabled={loading || !label.trim() || !Number.isInteger(sizeOz) || !Number.isInteger(count)}>
+        <button class="primary-button" type="submit" disabled={loading || !label.trim() || !Number.isFinite(capacity) || (capacity ?? 0) <= 0 || !Number.isInteger(count)}>
           Add bag type
         </button>
       </form>
@@ -152,7 +153,7 @@
       {#if untracked.length > 0}
         <div class="warning">
           <strong>Packaging not configured:</strong>
-          {untracked.map((item) => `${item.required_count} × ${formatSize(item.size_oz)}`).join(', ')}
+          {untracked.map((item) => `${item.required_count} × ${formatPackageSizeGrams(item.size_grams, $units)}`).join(', ')}
         </div>
       {/if}
 
@@ -182,7 +183,7 @@
               {#each packaging as item}
                 <tr>
                   <td class="bag-label">{item.label}</td>
-                  <td>{formatSize(item.size_oz)}</td>
+                  <td>{formatPackageSizeGrams(item.size_grams, $units)}</td>
                   {#if dayStatus === 'completed'}
                     <td>{item.starting_count ?? '—'}</td>
                     <td>{item.filled_count ?? 0}</td>
