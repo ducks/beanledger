@@ -59,7 +59,7 @@ test.describe('preferred units', () => {
     expect([200, 401]).toContain(noauth.status());
   });
 
-  test('a product weight saved in lbs reads back as the same lbs after toggling to kg', async ({
+  test('a package displays as ounces or grams without changing its stored weight', async ({
     page
   }) => {
     const login = await page.request.post('/api/auth/login', {
@@ -68,12 +68,13 @@ test.describe('preferred units', () => {
     expect(login.status()).toBe(200);
 
     // Seed a batch type, group, and a product with a known lbs value.
-    await page.request.post('/api/batch-overrides', {
+    const batchType = await page.request.post('/api/batch-overrides', {
       data: { batch_type: 'standard', weight_lbs: 22 }
     });
+    expect(batchType.ok()).toBe(true);
 
     const groupId = `group_${Date.now()}_units`;
-    await page.request.post('/api/groups', {
+    const group = await page.request.post('/api/groups', {
       data: {
         id: groupId,
         label: 'Units Test Group',
@@ -85,28 +86,42 @@ test.describe('preferred units', () => {
         created_at: new Date().toISOString().slice(0, 10)
       }
     });
+    expect(group.ok()).toBe(true);
 
     const productId = `prod_${Date.now()}_units`;
-    const KNOWN_LBS = 1.10231; // ~0.5 kg
-    await page.request.post('/api/products', {
+    const KNOWN_LBS = 0.75; // 12 oz
+    const createdProduct = await page.request.post('/api/products', {
       data: {
         id: productId,
-        name: 'Half-kilo bag',
+        name: 'Twelve ounce bag',
         lbs: KNOWN_LBS,
         group_id: groupId,
         active: true,
         created_at: new Date().toISOString().slice(0, 10)
       }
     });
+    expect(createdProduct.ok()).toBe(true);
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /Catalog/ }).click();
+    await expect(page.getByRole('row').filter({ hasText: 'Twelve ounce bag' })).toContainText(
+      '12 oz'
+    );
 
     // Toggle to kg.
     await page.request.patch('/api/user/preferences', {
       data: { preferred_units: 'kg' }
     });
 
-    // Round-trip: fetch the product and ensure the canonical lbs value
-    // hasn't changed. The DB is the source of truth; the toggle only
-    // affects display.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: /Catalog/ }).click();
+    await expect(page.getByRole('row').filter({ hasText: 'Twelve ounce bag' })).toContainText(
+      '340.2 g'
+    );
+
+    // The unit preference changes presentation only. Storage remains lbs.
     const list = await page.request.get('/api/products');
     expect(list.status()).toBe(200);
     const products = await list.json();

@@ -2,7 +2,7 @@
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
   import CsvFormatBuilder from './CsvFormatBuilder.svelte';
   import { units } from '$lib/stores/units';
-  import { formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
+  import { formatPackageSize, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
 
   let {
     onClose,
@@ -536,7 +536,7 @@
                     />
                   </td>
                   <td>{product.name}</td>
-                  <td>{formatWeight(product.lbs, $units)}</td>
+                  <td>{formatPackageSize(product.lbs, $units)}</td>
                   <td>{groups.find((g) => g.id === product.group_id)?.label || '—'}</td>
                   <td>
                     <button

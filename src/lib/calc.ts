@@ -14,7 +14,7 @@ export interface GroupCalc {
     id: string;
     name: string;
     lbs: number;
-    group: string;
+    group_id: string;
     totalQty: number;
     totalLbs: number;
   }>;
@@ -86,6 +86,28 @@ export function formatWeight(
   const num = value.toFixed(decimals);
   if (!withUnit) return num;
   return `${num} ${units === 'kg' ? 'kg' : 'lb'}`;
+}
+
+function compact(value: number, decimals: number): string {
+  return value.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
+/**
+ * Format the capacity of one retail package. Small imperial packages are
+ * conventionally labeled in ounces, while small metric packages use grams.
+ * Larger values stay in the user's preferred roast-weight unit.
+ */
+export function formatPackageSize(lbs: number, units: 'lbs' | 'kg'): string {
+  if (units === 'kg') {
+    const kilograms = lbs * 0.453592;
+    return kilograms < 1
+      ? `${compact(kilograms * 1000, 1)} g`
+      : `${compact(kilograms, 2)} kg`;
+  }
+
+  return lbs < 1
+    ? `${compact(lbs * 16, 1)} oz`
+    : `${compact(lbs, 2)} lb`;
 }
 
 /**

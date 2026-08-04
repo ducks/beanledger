@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Order, Product, RoastGroup } from '$lib/types';
   import type { GroupCalc } from '$lib/calc';
-  import { formatWeight } from '$lib/calc';
+  import { formatPackageSize, formatWeight } from '$lib/calc';
 
   let {
     orders,
@@ -66,7 +66,7 @@
 
       // Track by size
       const sizeKey = product.lbs;
-      const sizeLabel = formatWeight(product.lbs, units);
+      const sizeLabel = formatPackageSize(product.lbs, units);
 
       if (!sizeMap.has(sizeKey)) {
         sizeMap.set(sizeKey, { size: sizeLabel, qty: 0, totalLbs: 0 });

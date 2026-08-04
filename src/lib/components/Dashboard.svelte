@@ -114,6 +114,12 @@
     }
   }
 
+  function continueActiveDay() {
+    if (activeDay) {
+      goto(`/planner?date=${activeDay.production_date}`);
+    }
+  }
+
   async function deleteDay(date: string) {
     if (!confirm('Delete this roast day? This cannot be undone.')) return;
 
@@ -240,7 +246,7 @@
           <button onclick={finishActiveAndStartNew} disabled={loading}>
             Finish {formatDate(activeDay.production_date)} and start new
           </button>
-          <button onclick={() => goto(`/planner?date=${activeDay.production_date}`)} disabled={loading}>
+          <button onclick={continueActiveDay} disabled={loading}>
             Continue working on {formatDate(activeDay.production_date)}
           </button>
           <button onclick={() => { showNewDayModal = false; createNewDay('scheduled'); }} disabled={loading}>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Order, Product, RoastGroup } from '$lib/types';
-  import { calcGroup, formatWeight } from '$lib/calc';
+  import { calcGroup, formatPackageSize, formatWeight } from '$lib/calc';
 
   let {
     orders,
@@ -104,7 +104,7 @@
       if (!product) continue;
 
       const sizeKey = product.lbs;
-      const sizeLabel = formatWeight(product.lbs, units);
+      const sizeLabel = formatPackageSize(product.lbs, units);
 
       if (!sizeMap.has(sizeKey)) {
         sizeMap.set(sizeKey, { size: sizeLabel, qty: 0 });

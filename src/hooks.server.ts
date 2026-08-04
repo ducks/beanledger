@@ -13,7 +13,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   if (sessionId) {
     try {
       // Look up session and join with user and tenant
-      const result = await query<User & { tenant_name: string }>(`
+      const result = await query<User & { tenant_name: string; tenant_created_at: string }>(`
         SELECT
           u.id, u.username, u.email, u.tenant_id, u.preferred_units, u.created_at,
           t.name as tenant_name, t.created_at as tenant_created_at

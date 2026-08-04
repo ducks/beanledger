@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { RoastGroup, Product, Order, BatchOverride } from '$lib/types';
-  import { calcGroup, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
+  import { calcGroup, formatPackageSize, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
   import { units } from '$lib/stores/units';
   import CsvImport from './CsvImport.svelte';
   import ImportHistory from './ImportHistory.svelte';
@@ -639,7 +639,7 @@
                     onclick={() => { selectedProduct = product; search = product.name; dropOpen = false; }}
                   >
                     {product.name}
-                    <span class="meta">{formatWeight(product.lbs, $units)}</span>
+                    <span class="meta">{formatPackageSize(product.lbs, $units)}</span>
                   </button>
                 {/each}
               </div>
