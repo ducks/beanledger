@@ -528,36 +528,6 @@
                   {:else}
                     <div class="form-row">
                       <label>
-                        Product Name:
-                        <input
-                          type="text"
-                          bind:value={formData.cleanName}
-                          placeholder="e.g., Sure Thing - 10.9oz"
-                          class="text-input"
-                        />
-                      </label>
-                    </div>
-                    {#if formData.cleanName.toLowerCase() !== match.productName.toLowerCase()}
-                      <p class="alias-hint">
-                        An alias will be created: "{match.productName}" &rarr; "{formData.cleanName}"
-                      </p>
-                    {/if}
-                    <div class="form-row">
-                      <label>
-                        Weight ({unitLabel($units)}):
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.lbs ? toUnits(formData.lbs, $units).toFixed(4).replace(/\.?0+$/, '') : ''}
-                          oninput={(e) => {
-                            const v = parseWeight((e.target as HTMLInputElement).value, $units);
-                            formData.lbs = isFinite(v) ? v : 0;
-                          }}
-                          class="weight-input"
-                        />
-                      </label>
-                      <label>
                         Roast Group:
                         <select
                           bind:value={formData.groupId}
@@ -621,6 +591,40 @@
                         </div>
                       </div>
                     {/if}
+
+                    <div class="form-row">
+                      <label>
+                        Product Name:
+                        <input
+                          type="text"
+                          bind:value={formData.cleanName}
+                          placeholder="e.g., Sure Thing - 10.9oz"
+                          class="text-input"
+                        />
+                      </label>
+                    </div>
+                    {#if formData.cleanName.toLowerCase() !== match.productName.toLowerCase()}
+                      <p class="alias-hint">
+                        An alias will be created: "{match.productName}" &rarr; "{formData.cleanName}"
+                      </p>
+                    {/if}
+                    <div class="form-row">
+                      <label>
+                        Weight ({unitLabel($units)}):
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.lbs ? toUnits(formData.lbs, $units).toFixed(4).replace(/\.?0+$/, '') : ''}
+                          oninput={(e) => {
+                            const v = parseWeight((e.target as HTMLInputElement).value, $units);
+                            formData.lbs = isFinite(v) ? v : 0;
+                          }}
+                          class="weight-input"
+                        />
+                      </label>
+                    </div>
+
                   {/if}
 
                   <div class="form-actions">
