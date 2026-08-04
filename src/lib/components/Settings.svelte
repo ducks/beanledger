@@ -1,23 +1,28 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BatchOverride } from '$lib/types';
+  import type { BatchOverride, Units } from '$lib/types';
+  import { units, setUnits } from '$lib/stores/units';
+  import { toUnits, parseWeight, unitLabel } from '$lib/calc';
 
   let {
-    units,
     onClose,
-    onUnitsChange,
     onBatchOverridesChange
   }: {
-    units: 'lbs' | 'kg';
     onClose: () => void;
-    onUnitsChange: (newUnits: 'lbs' | 'kg') => void;
     onBatchOverridesChange?: () => void;
   } = $props();
 
-  let localUnits = $state(units);
+  // Local pending value so the radio doesn't fire a save on every click;
+  // user must click Save. Initialized from the store on mount.
+  let localUnits = $state<Units>($units);
+  let saveError = $state('');
+
+  // Batch type weights are stored canonically in lbs but displayed and
+  // entered in the user's preferred units. We keep the entry value as a
+  // string so partial typing ("2.") doesn't get clobbered by parseFloat.
   let batchTypes = $state<BatchOverride[]>([]);
   let newBatchTypeName = $state('');
-  let newBatchTypeWeight = $state(20);
+  let newBatchTypeWeightInput = $state('20');
 
   onMount(async () => {
     await loadBatchTypes();
@@ -35,19 +40,20 @@
   }
 
   async function addBatchType() {
-    if (!newBatchTypeName.trim() || newBatchTypeWeight <= 0) return;
+    const lbs = parseWeight(newBatchTypeWeightInput, $units);
+    if (!newBatchTypeName.trim() || !isFinite(lbs) || lbs <= 0) return;
 
     await fetch('/api/batch-overrides', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         batch_type: newBatchTypeName.trim().toLowerCase(),
-        weight_lbs: newBatchTypeWeight
+        weight_lbs: lbs
       })
     });
 
     newBatchTypeName = '';
-    newBatchTypeWeight = 20;
+    newBatchTypeWeightInput = '20';
     await loadBatchTypes();
     onBatchOverridesChange?.();
   }
@@ -60,17 +66,27 @@
     onBatchOverridesChange?.();
   }
 
-  async function updateBatchType(batchType: string, weight: number) {
+  async function updateBatchType(batchType: string, displayedWeight: string) {
+    const lbs = parseWeight(displayedWeight, $units);
+    if (!isFinite(lbs) || lbs <= 0) return;
     await fetch('/api/batch-overrides', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch_type: batchType, weight_lbs: weight })
+      body: JSON.stringify({ batch_type: batchType, weight_lbs: lbs })
     });
     onBatchOverridesChange?.();
   }
 
-  function save() {
-    onUnitsChange(localUnits);
+  async function save() {
+    saveError = '';
+    if (localUnits !== $units) {
+      try {
+        await setUnits(localUnits);
+      } catch (err) {
+        saveError = err instanceof Error ? err.message : 'Failed to save';
+        return;
+      }
+    }
     onClose();
   }
 </script>
@@ -108,11 +124,11 @@
                 type="number"
                 step="0.01"
                 min="0"
-                value={batchType.weight_lbs}
-                onchange={(e) => updateBatchType(batchType.batch_type, parseFloat(e.currentTarget.value))}
+                value={toUnits(batchType.weight_lbs, $units).toFixed(2)}
+                onchange={(e) => updateBatchType(batchType.batch_type, e.currentTarget.value)}
                 class="batch-input"
               />
-              <span class="batch-unit">lbs</span>
+              <span class="batch-unit">{unitLabel($units)}</span>
               <button
                 class="delete-button"
                 onclick={() => deleteBatchType(batchType.batch_type)}
@@ -133,14 +149,18 @@
             type="number"
             step="0.01"
             min="0"
-            bind:value={newBatchTypeWeight}
+            bind:value={newBatchTypeWeightInput}
             placeholder="Weight"
             class="batch-weight-input"
           />
-          <span class="batch-unit">lbs</span>
+          <span class="batch-unit">{unitLabel($units)}</span>
           <button class="add-button" onclick={addBatchType}>Add</button>
         </div>
       </div>
+
+      {#if saveError}
+        <div class="save-error">{saveError}</div>
+      {/if}
 
       <div class="modal-footer">
         <button class="save-button" onclick={save}>Save</button>
@@ -285,6 +305,12 @@
     color: var(--text);
     font-weight: 600;
     text-transform: capitalize;
+  }
+
+  .save-error {
+    color: var(--danger);
+    font-size: 13px;
+    padding: 8px 0;
   }
 
   .batch-unit {

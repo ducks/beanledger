@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { RoastGroup } from '$lib/types';
   import type { GroupCalc } from '$lib/calc';
-  import { formatWeight } from '$lib/calc';
+  import { formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
 
   let {
     groups,
@@ -62,12 +62,15 @@
                 type="number"
                 step="0.01"
                 class="leftover-input"
-                value={leftovers[group.id] ?? group.calc.predictedLeftover ?? 0}
+                value={toUnits(leftovers[group.id] ?? group.calc.predictedLeftover ?? 0, units).toFixed(2)}
                 onfocus={() => handleFocus(group.id)}
-                onchange={(e) => handleLeftoverUpdate(group.id, parseFloat(e.currentTarget.value) || 0)}
+                onchange={(e) => {
+                  const lbs = parseWeight(e.currentTarget.value, units);
+                  handleLeftoverUpdate(group.id, isFinite(lbs) ? lbs : 0);
+                }}
                 onwheel={(e) => e.currentTarget.blur()}
               />
-              <span class="unit">lb</span>
+              <span class="unit">{unitLabel(units)}</span>
             </div>
           </div>
         {/each}

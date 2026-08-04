@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Order, Product, RoastGroup } from '$lib/types';
   import type { GroupCalc } from '$lib/calc';
-  import { formatWeight } from '$lib/calc';
+  import { formatPackageSize, formatWeight } from '$lib/calc';
 
   let {
     orders,
@@ -66,7 +66,7 @@
 
       // Track by size
       const sizeKey = product.lbs;
-      const sizeLabel = product.lbs >= 1 ? `${product.lbs} lb` : `${(product.lbs * 16).toFixed(1)} oz`;
+      const sizeLabel = formatPackageSize(product.lbs, units);
 
       if (!sizeMap.has(sizeKey)) {
         sizeMap.set(sizeKey, { size: sizeLabel, qty: 0, totalLbs: 0 });
@@ -212,7 +212,7 @@
                 <div class="batch-label">{group.label}</div>
                 <div class="batch-info">
                   <span class="batch-count">{group.calc.batchesUp}</span>
-                  <span class="batch-type">× {group.calc.batchWeight} lb</span>
+                  <span class="batch-type">× {formatWeight(group.calc.batchWeight, units)}</span>
                 </div>
               </div>
             {/each}

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { calcGroup, formatWeight } from './calc';
+import {
+  calcGroup,
+  formatPackageSize,
+  formatWeight,
+  parseWeight,
+  toUnits,
+  unitLabel
+} from './calc';
 import type { RoastGroup, Product, Order } from './types';
 
 describe('formatWeight', () => {
@@ -16,6 +23,64 @@ describe('formatWeight', () => {
   it('respects custom decimal places', () => {
     expect(formatWeight(10.5678, 'lbs', 4)).toBe('10.5678 lb');
     expect(formatWeight(10.5678, 'kg', 4)).toBe('4.7935 kg');
+  });
+
+  it('omits unit suffix when withUnit=false', () => {
+    expect(formatWeight(10.5, 'lbs', 2, false)).toBe('10.50');
+    expect(formatWeight(10, 'kg', 2, false)).toBe('4.54');
+  });
+});
+
+describe('parseWeight', () => {
+  it('returns lbs unchanged when units are lbs', () => {
+    expect(parseWeight(10.5, 'lbs')).toBe(10.5);
+    expect(parseWeight('0.625', 'lbs')).toBe(0.625);
+  });
+
+  it('converts kg input to lbs', () => {
+    expect(parseWeight(1, 'kg')).toBeCloseTo(2.20462, 4);
+    expect(parseWeight('10', 'kg')).toBeCloseTo(22.0462, 3);
+  });
+
+  it('returns NaN for empty or non-numeric input', () => {
+    expect(parseWeight('', 'lbs')).toBeNaN();
+    expect(parseWeight('abc', 'kg')).toBeNaN();
+  });
+
+  it('round-trips with formatWeight', () => {
+    const lbs = 1.10231; // ≈ 0.5 kg
+    const displayed = formatWeight(lbs, 'kg', 4, false);
+    const parsedBack = parseWeight(displayed, 'kg');
+    expect(parsedBack).toBeCloseTo(lbs, 4);
+  });
+});
+
+describe('formatPackageSize', () => {
+  it('uses ounces for sub-pound imperial packages', () => {
+    expect(formatPackageSize(0.75, 'lbs')).toBe('12 oz');
+    expect(formatPackageSize(0.625, 'lbs')).toBe('10 oz');
+    expect(formatPackageSize(1, 'lbs')).toBe('1 lb');
+  });
+
+  it('uses grams for sub-kilogram metric packages', () => {
+    expect(formatPackageSize(0.75, 'kg')).toBe('340.2 g');
+    expect(formatPackageSize(1 / 0.453592, 'kg')).toBe('1 kg');
+  });
+});
+
+describe('toUnits', () => {
+  it('returns lbs unchanged for lbs', () => {
+    expect(toUnits(5, 'lbs')).toBe(5);
+  });
+  it('converts to kg', () => {
+    expect(toUnits(1, 'kg')).toBeCloseTo(0.453592, 6);
+  });
+});
+
+describe('unitLabel', () => {
+  it('returns label suffix', () => {
+    expect(unitLabel('lbs')).toBe('lb');
+    expect(unitLabel('kg')).toBe('kg');
   });
 });
 
@@ -98,11 +163,11 @@ describe('calcGroup', () => {
     const result = calcGroup(mockGroup, orders, mockProducts, 0);
 
     // 50 lbs roasted * (1 / 0.85) = ~58.82 lbs green
-    // Standard batch = 20.2 lbs
-    // batches = 58.82 / 20.2 = ~2.91
-    expect(result.batches).toBeCloseTo(2.91, 1);
+    // Without a configured batch type, calcGroup uses its 20 lb fallback.
+    // batches = 58.82 / 20 = ~2.94
+    expect(result.batches).toBeCloseTo(2.94, 1);
     expect(result.batchesUp).toBe(3); // Rounded up
-    expect(result.batchWeight).toBe(20.2);
+    expect(result.batchWeight).toBe(20);
   });
 
   it('supports batch overrides', () => {
@@ -157,24 +222,24 @@ describe('calcGroup', () => {
     expect(result.totalLbs).toBe(10);
   });
 
-  it('uses dark batch weight for dark roasts', () => {
+  it('uses a configured dark batch weight for dark roasts', () => {
     const darkGroup: RoastGroup = { ...mockGroup, batch_type: 'dark' };
     const orders: Order[] = [
       { id: 'o1', product_id: 'p1', qty: 20, production_date: '2026-03-01' }
     ];
 
-    const result = calcGroup(darkGroup, orders, mockProducts, 0);
+    const result = calcGroup(darkGroup, orders, mockProducts, 0, { dark: 19.8 });
 
     expect(result.batchWeight).toBe(19.8); // Dark batch weight
   });
 
-  it('uses decaf batch weight for decaf roasts', () => {
+  it('uses a configured decaf batch weight for decaf roasts', () => {
     const decafGroup: RoastGroup = { ...mockGroup, batch_type: 'decaf' };
     const orders: Order[] = [
       { id: 'o1', product_id: 'p1', qty: 20, production_date: '2026-03-01' }
     ];
 
-    const result = calcGroup(decafGroup, orders, mockProducts, 0);
+    const result = calcGroup(decafGroup, orders, mockProducts, 0, { decaf: 10.73 });
 
     expect(result.batchWeight).toBe(10.73); // Decaf batch weight
   });

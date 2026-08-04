@@ -19,7 +19,6 @@
   let activeDay: ProductionDay | null = $state(null);
   let showCatalog = $state(false);
   let showSettings = $state(false);
-  let units = $state<'lbs' | 'kg'>('lbs');
 
   onMount(async () => {
     await loadDays();
@@ -112,6 +111,12 @@
       error = 'Failed to finish active day';
     } finally {
       loading = false;
+    }
+  }
+
+  function continueActiveDay() {
+    if (activeDay) {
+      goto(`/planner?date=${activeDay.production_date}`);
     }
   }
 
@@ -241,7 +246,7 @@
           <button onclick={finishActiveAndStartNew} disabled={loading}>
             Finish {formatDate(activeDay.production_date)} and start new
           </button>
-          <button onclick={() => goto(`/planner?date=${activeDay.production_date}`)} disabled={loading}>
+          <button onclick={continueActiveDay} disabled={loading}>
             Continue working on {formatDate(activeDay.production_date)}
           </button>
           <button onclick={() => { showNewDayModal = false; createNewDay('scheduled'); }} disabled={loading}>
@@ -289,11 +294,7 @@
 {/if}
 
 {#if showSettings}
-  <Settings
-    {units}
-    onClose={() => (showSettings = false)}
-    onUnitsChange={(newUnits) => (units = newUnits)}
-  />
+  <Settings onClose={() => (showSettings = false)} />
 {/if}
 
 <style>
