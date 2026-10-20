@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query, withTransaction } from '$lib/db';
-import { hashPassword, generateSessionId, getSessionExpiration } from '$lib/auth';
+import { hashPassword, generateSessionId } from '$lib/auth';
 import { handle, readBody, requireString, ValidationError } from '$lib/server/validate';
+import { sendVerificationMail } from '$lib/server/accounts';
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
   return handle('Signup', async () => {
     const body = await readBody(request);
     const username = requireString(body, 'username', 32);
@@ -31,21 +32,19 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     const passwordHash = await hashPassword(password);
     const sessionId = generateSessionId();
-    const expiresAt = getSessionExpiration();
 
     // Tenant, user, and first session land together or not at all; a
     // failure halfway used to leave an orphan tenant behind.
     const user = await withTransaction(async (client) => {
       const tenant = await client.query<{ id: string }>('INSERT INTO tenants (name) VALUES ($1) RETURNING id', [tenantName]);
       const created = await client.query(
-        `INSERT INTO users (username, email, password_hash, tenant_id)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, username, email, tenant_id, created_at`,
+        `INSERT INTO users (username, email, password_hash, tenant_id, role)
+         VALUES ($1, $2, $3, $4, 'owner')
+         RETURNING id, username, email, tenant_id, role, created_at`,
         [username, email, passwordHash, tenant.rows[0].id]
       );
-      await client.query('INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, $3)', [
-        sessionId, created.rows[0].id, expiresAt
-      ]);
+      await client.query('INSERT INTO sessions (id, user_id, expires_at) VALUES ($1, $2, CURRENT_TIMESTAMP + make_interval(days => 30))', [sessionId, created.rows[0].id]);
+      await sendVerificationMail(client, created.rows[0], url.origin);
       return created.rows[0];
     });
 

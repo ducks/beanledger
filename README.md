@@ -44,6 +44,24 @@ BeanLedger helps coffee roasters plan production:
 - **Testing**: Vitest (14 tests covering core business logic)
 - **Deployment**: Node.js 22, NixOS service
 
+## Accounts
+
+Signing up creates a tenant and its first **owner**. Owners invite others by
+email as owner or staff from Settings → Team; staff use the planner but do not
+manage accounts. Email verification, password reset, and invitations are
+links sent by email, so the server needs a mail transport:
+
+| Variable | Meaning |
+|---|---|
+| `MAIL_TRANSPORT` | `console` (default, logs the message), `file` (append to `MAIL_OUTBOX`; used by tests), or `smtp` |
+| `SMTP_URL` | e.g. `smtps://user:pass@smtp.example.com:465` when `MAIL_TRANSPORT=smtp` |
+| `MAIL_FROM` | sender address for SMTP |
+| `ORIGIN` | public base URL used in emailed links (already required by adapter-node) |
+| `ADDRESS_HEADER` | set to `X-Forwarded-For` behind a reverse proxy so login rate limiting sees the client address |
+
+Failed logins are limited to 10 per 15 minutes per username and per address.
+Resetting a password signs out every session for that user.
+
 ## Multi-Tenancy
 
 BeanLedger supports multiple roaster companies (tenants) with complete data isolation:
@@ -106,11 +124,12 @@ pnpm test:ui           # Interactive UI
 - [ ] Cost tracking per roast
 
 ### Auth & User Management
-- [ ] User roles (admin, team member, read-only)
-- [ ] Email verification
-- [ ] Password reset flow
-- [ ] Session timeout/renewal
-- [ ] Invite team members
+- [x] User roles (owner, staff)
+- [x] Email verification
+- [x] Password reset flow
+- [x] Expired-session cleanup
+- [x] Invite team members
+- [ ] Session renewal
 
 ### Technical
 - [x] Migration scripts for schema changes
