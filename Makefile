@@ -1,4 +1,4 @@
-.PHONY: help version-bump release build dev clean
+.PHONY: help version-bump release build dev clean check test e2e
 
 # Auto-generate version from today's date with auto-incrementing patch
 # Format: vYYYY.MM.DD.X where X increments if releasing multiple times per day
@@ -23,6 +23,7 @@ help:
 	@echo "Usage:"
 	@echo "  make release                       - Auto-version and release (recommended)"
 	@echo "  make release VERSION=2026.02.27.0  - Release with specific version"
+	@echo "  make check                         - Type-check + unit + e2e (what CI runs)"
 	@echo "  make build                         - Build production bundle"
 	@echo "  make dev                           - Start development server"
 	@echo "  make clean                         - Clean build artifacts"
@@ -43,8 +44,21 @@ version-bump:
 	@echo "Version bumped to $(VERSION)"
 	@echo "Commit created"
 
+# Type-check, unit tests, and the docker-backed e2e suite: the same gate CI
+# applies. Running it here keeps a red release from ever being tagged.
+check:
+	pnpm run check
+	pnpm test
+	pnpm test:e2e
+
+test:
+	pnpm test
+
+e2e:
+	pnpm test:e2e
+
 # Merge to main, tag, and push to trigger GitHub Actions release
-release: version-bump
+release: check version-bump
 	@echo "Merging into main..."
 	@git checkout main
 	@git merge --no-ff release/$(VERSION)
