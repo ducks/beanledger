@@ -1,5 +1,5 @@
 import type { CsvRow } from '../types';
-import type { CsvFormat } from './types';
+import { type CsvFormat, parseCsv } from './types';
 
 /**
  * ShipStation export format: "Item - Name","Item - Qty"
@@ -14,26 +14,25 @@ export const shipstationFormat: CsvFormat = {
   },
 
   parse(csvText) {
-    const lines = csvText.trim().split('\n');
-    if (lines.length < 2) {
+    const records = parseCsv(csvText);
+    if (records.length < 2) {
       throw new Error('CSV must have at least a header and one data row');
     }
 
+    // Real ShipStation exports carry dozens of columns; find ours by name
+    // rather than assuming a two-column file.
+    const headers = records[0].map((h) => h.toLowerCase());
+    const nameCol = headers.indexOf('item - name');
+    const qtyCol = headers.indexOf('item - qty');
+    if (nameCol < 0 || qtyCol < 0) {
+      throw new Error('ShipStation export needs "Item - Name" and "Item - Qty" columns');
+    }
+
     const rows: CsvRow[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      // Simple CSV parsing (handles quoted values)
-      const match = line.match(/^"([^"]*)",\s*"(\d+)"$/);
-      if (!match) {
-        console.warn(`Skipping malformed line ${i + 1}: ${line}`);
-        continue;
-      }
-
-      const productName = match[1];
-      const quantity = parseInt(match[2], 10);
+    for (const cols of records.slice(1)) {
+      const productName = cols[nameCol] ?? '';
+      const quantity = parseInt(cols[qtyCol] ?? '', 10);
+      if (!productName || !Number.isFinite(quantity) || quantity <= 0) continue;
 
       // Skip non-product rows (discounts, etc)
       if (productName.includes('DISCOUNT') || productName.includes('Additional')) {

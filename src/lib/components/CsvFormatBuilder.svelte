@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CsvFormat } from '$lib/types';
   import { parseWithConfig } from '$lib/csv/formats/generic';
-  import { parseHeaders, splitCsvLine } from '$lib/csv/formats/types';
+  import { parseCsv } from '$lib/csv/formats/types';
 
   let {
     editing,
@@ -47,10 +47,10 @@
   const parsed = $derived.by(() => {
     if (!sampleCsv.trim()) return null;
     try {
-      const lines = sampleCsv.trim().split('\n');
-      if (lines.length < 2) return { headers: [], rows: [] };
-      const headers = parseHeaders(lines[0]);
-      const rows = lines.slice(1, 6).map(l => splitCsvLine(l));
+      const records = parseCsv(sampleCsv);
+      if (records.length < 2) return { headers: [], rows: [] };
+      const headers = records[0].map((h) => h.toLowerCase());
+      const rows = records.slice(1, 6);
       return { headers, rows };
     } catch {
       return null;
