@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+/** Emails the app sends during e2e land here as JSON lines. */
+export const MAIL_OUTBOX = path.resolve('test-results/outbox.jsonl');
 
 const PORT = 4173;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -33,7 +37,9 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://beanledger:beanledger@localhost:5433/beanledger_test',
       NODE_ENV: 'development',
       PORT: String(PORT),
-      HOST: 'localhost'
+      HOST: 'localhost',
+      MAIL_TRANSPORT: 'file',
+      MAIL_OUTBOX
     }
   }
 });

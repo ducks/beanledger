@@ -72,6 +72,7 @@
 
     <p class="signup-link">
       Don't have an account? <a href="/signup">Sign up</a>
+      · <a href="/forgot-password">Forgot password?</a>
     </p>
   </div>
 </div>

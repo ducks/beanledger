@@ -15,7 +15,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       // Look up session and join with user and tenant
       const result = await query<User & { tenant_name: string; tenant_created_at: string }>(`
         SELECT
-          u.id, u.username, u.email, u.tenant_id, u.preferred_units, u.created_at,
+          u.id, u.username, u.email, u.tenant_id, u.preferred_units, u.role, u.email_verified_at, u.created_at,
           t.name as tenant_name, t.created_at as tenant_created_at
         FROM sessions s
         JOIN users u ON s.user_id = u.id
@@ -31,6 +31,8 @@ export const handle: Handle = async ({ event, resolve }) => {
           email: row.email,
           tenant_id: row.tenant_id,
           preferred_units: row.preferred_units,
+          role: row.role,
+          email_verified_at: row.email_verified_at,
           created_at: row.created_at
         };
         event.locals.tenant = {

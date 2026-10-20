@@ -44,6 +44,12 @@
     localStorage.setItem('theme', theme);
   }
 
+  let resent = $state(false);
+  async function resendVerification() {
+    const res = await fetch('/api/auth/resend-verification', { method: 'POST' });
+    resent = res.ok;
+  }
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     goto('/login');
@@ -72,9 +78,39 @@
   </header>
 {/if}
 
+{#if data.user && !data.user.email_verified_at}
+  <div class="verify-banner">
+    <span>Please verify your email address ({data.user.email}).</span>
+    {#if resent}
+      <span>Sent. Check your inbox.</span>
+    {:else}
+      <button onclick={resendVerification}>Resend link</button>
+    {/if}
+  </div>
+{/if}
+
 {@render children()}
 
 <style>
+  .verify-banner {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background: var(--info-bg);
+    color: var(--info-text);
+    font-size: 0.9rem;
+  }
+  .verify-banner button {
+    background: none;
+    border: 1px solid currentColor;
+    color: inherit;
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+    cursor: pointer;
+  }
+
   :global(:root) {
     --font-family: Arial, Helvetica, sans-serif;
 

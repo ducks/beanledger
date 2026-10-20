@@ -103,12 +103,16 @@ export interface Tenant {
 
 export type Units = 'lbs' | 'kg';
 
+export type Role = 'owner' | 'staff';
+
 export interface User {
   id: string;
   username: string;
   email: string;
   tenant_id: string;
   preferred_units: Units;
+  role: Role;
+  email_verified_at: string | null;
   created_at: string;
 }
 

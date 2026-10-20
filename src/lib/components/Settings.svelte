@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BatchOverride, Units } from '$lib/types';
+  import { page } from '$app/stores';
+  import type { BatchOverride, Role, Units } from '$lib/types';
   import { units, setUnits } from '$lib/stores/units';
   import { toUnits, parseWeight, unitLabel } from '$lib/calc';
 
@@ -24,9 +25,72 @@
   let newBatchTypeName = $state('');
   let newBatchTypeWeightInput = $state('20');
 
+  // Team management, owners only. Staff see the member list read-only.
+  interface Member { id: string; username: string; email: string; role: Role; email_verified_at: string | null }
+  interface Invite { id: string; email: string; role: Role; expires_at: string }
+  const me = $derived($page.data.user as { id: string; role: Role } | null);
+  const isOwner = $derived(me?.role === 'owner');
+  let members = $state<Member[]>([]);
+  let invites = $state<Invite[]>([]);
+  let inviteEmail = $state('');
+  let inviteRole = $state<Role>('staff');
+  let teamError = $state('');
+  let teamNotice = $state('');
+
   onMount(async () => {
     await loadBatchTypes();
+    await loadTeam();
   });
+
+  async function loadTeam() {
+    const usersRes = await fetch('/api/tenant/users');
+    if (usersRes.ok) members = (await usersRes.json()).users;
+    if (isOwner) {
+      const invitesRes = await fetch('/api/tenant/invites');
+      if (invitesRes.ok) invites = (await invitesRes.json()).invites;
+    }
+  }
+
+  async function sendInvite() {
+    teamError = '';
+    teamNotice = '';
+    const res = await fetch('/api/tenant/invites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole })
+    });
+    if (!res.ok) {
+      teamError = (await res.json().catch(() => ({}))).error || 'Could not send invitation';
+      return;
+    }
+    teamNotice = `Invitation sent to ${inviteEmail.trim()}`;
+    inviteEmail = '';
+    await loadTeam();
+  }
+
+  async function revokeInvite(id: string) {
+    await fetch(`/api/tenant/invites?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await loadTeam();
+  }
+
+  async function changeRole(member: Member, role: Role) {
+    teamError = '';
+    const res = await fetch('/api/tenant/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: member.id, role })
+    });
+    if (!res.ok) teamError = (await res.json().catch(() => ({}))).error || 'Could not change role';
+    await loadTeam();
+  }
+
+  async function removeMember(member: Member) {
+    if (!confirm(`Remove ${member.username} from this roastery?`)) return;
+    teamError = '';
+    const res = await fetch(`/api/tenant/users?id=${encodeURIComponent(member.id)}`, { method: 'DELETE' });
+    if (!res.ok) teamError = (await res.json().catch(() => ({}))).error || 'Could not remove user';
+    await loadTeam();
+  }
 
   async function loadBatchTypes() {
     const res = await fetch('/api/batch-overrides');
@@ -158,6 +222,46 @@
         </div>
       </div>
 
+      <div class="setting-section">
+        <div class="setting-label">Team</div>
+        <div class="team-list">
+          {#each members as member}
+            <div class="team-row">
+              <span class="team-name">{member.username}</span>
+              <span class="team-email">{member.email}{member.email_verified_at ? '' : ' (unverified)'}</span>
+              {#if isOwner && member.id !== me?.id}
+                <select value={member.role} onchange={(e) => changeRole(member, e.currentTarget.value as Role)}>
+                  <option value="owner">owner</option>
+                  <option value="staff">staff</option>
+                </select>
+                <button class="delete-button" onclick={() => removeMember(member)} title="Remove user">×</button>
+              {:else}
+                <span class="team-role">{member.role}</span>
+              {/if}
+            </div>
+          {/each}
+        </div>
+        {#if isOwner}
+          {#each invites as invite}
+            <div class="team-row pending">
+              <span class="team-email">{invite.email}</span>
+              <span class="team-role">invited as {invite.role}</span>
+              <button class="delete-button" onclick={() => revokeInvite(invite.id)} title="Revoke invitation">×</button>
+            </div>
+          {/each}
+          <div class="add-batch-type">
+            <input type="email" bind:value={inviteEmail} placeholder="Invite by email" class="batch-name-input" />
+            <select bind:value={inviteRole}>
+              <option value="staff">staff</option>
+              <option value="owner">owner</option>
+            </select>
+            <button class="add-button" onclick={sendInvite} disabled={!inviteEmail.trim()}>Invite</button>
+          </div>
+          {#if teamError}<div class="save-error">{teamError}</div>{/if}
+          {#if teamNotice}<div class="team-notice">{teamNotice}</div>{/if}
+        {/if}
+      </div>
+
       {#if saveError}
         <div class="save-error">{saveError}</div>
       {/if}
@@ -171,6 +275,14 @@
 </div>
 
 <style>
+  .team-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .team-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .team-row.pending { color: var(--text-muted); font-style: italic; }
+  .team-name { font-weight: 600; min-width: 90px; }
+  .team-email { flex: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+  .team-role { color: var(--text-muted); }
+  .team-notice { color: var(--success-text); font-size: 13px; margin-top: 6px; }
+
   .modal-backdrop {
     position: fixed;
     inset: 0;
