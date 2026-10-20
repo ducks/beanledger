@@ -124,7 +124,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id: `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             alias_name: productName,
             product_id: formData.mapToProductId,
             active: true
@@ -150,9 +149,7 @@
             return;
           }
 
-          const newGroupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           const newGroup = {
-            id: newGroupId,
             label: formData.newGroupLabel,
             batch_type: formData.newGroupBatchType,
             roast_loss_pct: formData.newGroupRoastLoss,
@@ -173,7 +170,7 @@
             return;
           }
 
-          groupId = newGroupId;
+          groupId = (await groupRes.json()).id;
           await loadGroups();
         }
 
@@ -188,9 +185,7 @@
           return;
         }
 
-        const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const newProduct = {
-          id: productId,
           name: cleanName,
           lbs: formData.lbs,
           group_id: groupId,
@@ -208,6 +203,7 @@
           error = `Failed to create product: ${await productRes.text()}`;
           return;
         }
+        const productId: string = (await productRes.json()).id;
 
         // If the clean name differs from the CSV name, create an alias
         if (cleanName.toLowerCase() !== productName.toLowerCase()) {
@@ -215,7 +211,6 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              id: `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
               alias_name: productName,
               product_id: productId,
               active: true

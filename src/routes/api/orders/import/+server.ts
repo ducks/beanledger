@@ -1,133 +1,83 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { query } from '$lib/db';
-import { parseOrderCsv, matchProducts, generateOrderId } from '$lib/csv';
+import { query, withTransaction } from '$lib/db';
+import { parseOrderCsv, matchProducts } from '$lib/csv';
 import { parseWithConfig } from '$lib/csv/formats/generic';
+import { newId } from '$lib/server/ids';
+import { handle, readBody, requireString, requireDate, optionalId, optionalString, ValidationError } from '$lib/server/validate';
 import type { Product, ImportAlias, CsvFormat } from '$lib/types';
+
+const MAX_CSV_BYTES = 2 * 1024 * 1024;
 
 /**
  * POST /api/orders/import
  *
- * Body:
- * - csvText: string
- * - productionDate: string (YYYY-MM-DD)
- * - filename: string (optional, for tracking)
- * - confirm: boolean (if true, create orders; if false, just preview)
- * - manualMatches: Record<string, string> (optional, product name -> product ID overrides)
- *
- * Returns:
- * - matches: array of match results
- * - created: number of orders created (if confirmed)
- * - importId: UUID of the import batch (if confirmed)
+ * Body: { csvText, productionDate, filename?, confirm?, manualMatches?, formatId? }
+ * Without `confirm` returns the match preview. With it, creates the import
+ * record and every matched order in one transaction: an import either
+ * lands whole or not at all, and its order_count is always right.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.tenant) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!locals.tenant) return json({ error: 'Unauthorized' }, { status: 401 });
+  const tenantId = locals.tenant.id;
+  return handle('Import orders', async () => {
+    const body = await readBody(request);
+    const csvText = requireString(body, 'csvText', MAX_CSV_BYTES);
+    const productionDate = requireDate(body, 'productionDate');
+    const filename = optionalString(body, 'filename', 255) ?? 'unknown.csv';
+    const formatId = optionalId(body, 'formatId');
+    const manualMatches =
+      body.manualMatches && typeof body.manualMatches === 'object' && !Array.isArray(body.manualMatches)
+        ? (body.manualMatches as Record<string, unknown>)
+        : {};
 
-  try {
-    const { csvText, productionDate, filename, confirm, manualMatches, formatId } = await request.json();
-
-    if (!csvText || !productionDate) {
-      return json({ error: 'csvText and productionDate are required' }, { status: 400 });
-    }
-
-    // Parse CSV — use the selected format if provided, otherwise fall back
-    // to legacy auto-detect (will be removed once all tenants have migrated).
     let csvRows;
     if (formatId) {
       const formatResult = await query<CsvFormat>(
         'SELECT config FROM csv_formats WHERE id = $1 AND tenant_id = $2 AND active = true',
-        [formatId, locals.tenant.id]
+        [formatId, tenantId]
       );
-      if (formatResult.rows.length === 0) {
-        return json({ error: `CSV format not found: ${formatId}` }, { status: 400 });
-      }
+      if (formatResult.rows.length === 0) throw new ValidationError(`CSV format not found: ${formatId}`);
       csvRows = parseWithConfig(csvText, formatResult.rows[0].config);
     } else {
+      // Legacy auto-detect, kept until every tenant has a saved format.
       csvRows = parseOrderCsv(csvText);
     }
 
-    // Fetch all products for this tenant
-    const productsResult = await query<Product>(
-      'SELECT * FROM products WHERE tenant_id = $1 AND active = true',
-      [locals.tenant.id]
-    );
+    const [productsResult, aliasesResult] = await Promise.all([
+      query<Product>('SELECT * FROM products WHERE tenant_id = $1 AND active = true', [tenantId]),
+      query<ImportAlias>('SELECT * FROM import_aliases WHERE tenant_id = $1 AND active = true', [tenantId])
+    ]);
     const products = productsResult.rows;
 
-    // Fetch active import aliases for this tenant
-    const aliasesResult = await query<ImportAlias>(
-      'SELECT * FROM import_aliases WHERE tenant_id = $1 AND active = true',
-      [locals.tenant.id]
-    );
-    const aliases = aliasesResult.rows;
-
-    // Match CSV rows to products (checks aliases too)
-    let matches = matchProducts(csvRows, products, aliases);
-
-    // Apply manual overrides if provided
-    if (manualMatches && Object.keys(manualMatches).length > 0) {
-      matches = matches.map(match => {
-        const manualProductId = manualMatches[match.productName];
-        if (manualProductId) {
-          const manualProduct = products.find(p => p.id === manualProductId);
-          if (manualProduct) {
-            return {
-              ...match,
-              matchedProduct: manualProduct,
-              confidence: 'exact' as const
-            };
-          }
-        }
-        return match;
-      });
-    }
-
-    // If not confirming, just return preview
-    if (!confirm) {
-      return json({
-        matches,
-        unmatched: matches.filter(m => m.confidence === 'none').length,
-        total: matches.length
-      });
-    }
-
-    // Create import batch record
-    const importId = `import-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    await query(
-      'INSERT INTO imports (id, filename, production_date, tenant_id) VALUES ($1, $2, $3, $4)',
-      [importId, filename || 'unknown.csv', productionDate, locals.tenant.id]
-    );
-
-    // Create orders for matched products (not additive - each import is separate)
-    let created = 0;
-    for (const match of matches) {
-      if (match.matchedProduct) {
-        // Create new order with import_batch_id
-        const orderId = generateOrderId();
-        await query(
-          'INSERT INTO orders (id, product_id, qty, production_date, tenant_id, import_batch_id) VALUES ($1, $2, $3, $4, $5, $6)',
-          [orderId, match.matchedProduct.id, match.quantity, productionDate, locals.tenant.id, importId]
-        );
-        created++;
-      }
-    }
-
-    // Update import record with order count
-    await query(
-      'UPDATE imports SET order_count = $1 WHERE id = $2',
-      [created, importId]
-    );
-
-    return json({
-      matches,
-      created,
-      importId,
-      unmatched: matches.filter(m => m.confidence === 'none').length,
-      total: matches.length
+    let matches = matchProducts(csvRows, products, aliasesResult.rows);
+    matches = matches.map((match) => {
+      const manualProductId = manualMatches[match.productName];
+      const manualProduct = typeof manualProductId === 'string' ? products.find((p) => p.id === manualProductId) : undefined;
+      return manualProduct ? { ...match, matchedProduct: manualProduct, confidence: 'exact' as const } : match;
     });
-  } catch (err) {
-    console.error('CSV import error:', err);
-    return json({ error: err instanceof Error ? err.message : 'Import failed' }, { status: 500 });
-  }
+
+    const unmatched = matches.filter((m) => m.confidence === 'none').length;
+    if (body.confirm !== true) {
+      return json({ matches, unmatched, total: matches.length });
+    }
+
+    const { importId, created } = await withTransaction(async (client) => {
+      const importId = newId('import');
+      const matched = matches.filter((m) => m.matchedProduct);
+      await client.query(
+        'INSERT INTO imports (id, filename, production_date, tenant_id, order_count) VALUES ($1, $2, $3, $4, $5)',
+        [importId, filename, productionDate, tenantId, matched.length]
+      );
+      for (const match of matched) {
+        await client.query(
+          'INSERT INTO orders (id, product_id, qty, production_date, tenant_id, import_batch_id) VALUES ($1, $2, $3, $4, $5, $6)',
+          [newId('ord'), match.matchedProduct!.id, match.quantity, productionDate, tenantId, importId]
+        );
+      }
+      return { importId, created: matched.length };
+    });
+
+    return json({ matches, created, importId, unmatched, total: matches.length });
+  });
 };

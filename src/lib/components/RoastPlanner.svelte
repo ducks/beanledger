@@ -27,7 +27,6 @@
   let qty = $state(1);
   let dropOpen = $state(false);
   let productionDate = $state(initialDate);
-  let previousDate = $state(productionDate);
   let sortBy = $state<'type' | 'label' | 'batch_type' | 'needed'>('type');
   let importHistory: any;
   let dayStatus = $state<'active' | 'scheduled' | 'completed' | null>(null);
@@ -47,11 +46,9 @@
     await loadData();
     await loadBatchOverrides();
     await loadProductionDayStatus();
-    previousDate = productionDate;
   });
 
   async function loadData() {
-    console.log('[FRONTEND] loadData called for date:', productionDate);
     const [groupsRes, productsRes, ordersRes, leftoversRes] = await Promise.all([
       fetch('/api/groups'),
       fetch('/api/products'),
@@ -59,13 +56,11 @@
       fetch(`/api/leftovers?date=${productionDate}`)
     ]);
 
-    console.log('[FRONTEND] Leftovers response status:', leftoversRes.status);
     groups = await groupsRes.json();
     products = await productsRes.json();
     orders = await ordersRes.json();
     const leftoversData = await leftoversRes.json();
 
-    console.log('[FRONTEND] Leftovers data received:', leftoversData);
     // Ensure leftoversData is an array before reducing
     if (Array.isArray(leftoversData)) {
       leftovers = leftoversData.reduce((acc, l) => ({ ...acc, [l.group_id]: l.lbs }), {});
@@ -73,40 +68,8 @@
       leftovers = {};
     }
 
-    console.log('[FRONTEND] Processed leftovers object:', leftovers);
     // Also refresh import history
     importHistory?.refresh();
-  }
-
-  async function handleProductionDateChange(newDate: string) {
-    const oldDate = previousDate;
-
-    // Don't do anything if date hasn't actually changed
-    if (oldDate === newDate) {
-      return;
-    }
-
-    // Save snapshot of current date before switching (if there are orders)
-    if (orders.length > 0 && oldDate) {
-      await saveSnapshot(oldDate);
-    }
-
-    // Update tracking variable
-    previousDate = newDate;
-
-    // Try to load snapshot for new date
-    const snapshot = await loadSnapshot(newDate);
-
-    if (snapshot) {
-      // Restore from snapshot
-      await restoreFromSnapshot(snapshot);
-    } else {
-      // No snapshot - load fresh data for this date
-      await loadData();
-    }
-
-    // Load production day status
-    await loadProductionDayStatus();
   }
 
   async function loadProductionDayStatus() {
@@ -153,9 +116,8 @@
     showLeftoverConfirm = false;
 
     try {
-      // Save snapshot with complete data before marking as complete
-      await saveSnapshot(productionDate);
-
+      // Completing the day makes the server commit packaging usage and
+      // record the day's snapshot from database state.
       const res = await fetch(`/api/production-days/${productionDate}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -171,94 +133,6 @@
     } catch (err) {
       console.error('Failed to finish roast day:', err);
       alert('Network error while finishing roast day');
-    }
-  }
-
-  async function saveSnapshot(date: string) {
-    try {
-      // Convert orders to product names + quantities
-      const orderData = orders.map(o => {
-        const product = products.find(p => p.id === o.product_id);
-        return product ? { product_name: product.name, qty: o.qty } : null;
-      }).filter(Boolean);
-
-      // Calculate predicted leftovers and merge with manual adjustments
-      const finalLeftovers: Record<string, number> = {};
-      for (const groupWithCalc of plan) {
-        // Use manually entered value if exists, otherwise use predicted
-        const manualValue = leftovers[groupWithCalc.id];
-        const predictedValue = groupWithCalc.calc.predictedLeftover;
-
-        // If there's a manual value (even if 0), use it; otherwise use predicted
-        if (manualValue !== undefined) {
-          finalLeftovers[groupWithCalc.id] = manualValue;
-        } else if (predictedValue > 0) {
-          finalLeftovers[groupWithCalc.id] = predictedValue;
-        }
-      }
-
-      await fetch('/api/snapshots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          production_date: date,
-          orders: orderData,
-          leftovers: finalLeftovers,
-          groups,
-          products,
-          batchOverrides
-        })
-      });
-    } catch (err) {
-      console.error('Failed to save snapshot:', err);
-    }
-  }
-
-  async function loadSnapshot(date: string) {
-    try {
-      const res = await fetch(`/api/snapshots?date=${date}`);
-      if (res.ok) {
-        const data = await res.json();
-        return data?.summary ? data : null;
-      }
-      return null;
-    } catch (err) {
-      console.error('Failed to load snapshot:', err);
-      return null;
-    }
-  }
-
-  async function restoreFromSnapshot(snapshot: any) {
-    try {
-      // Load products and groups (current catalog)
-      const [groupsRes, productsRes] = await Promise.all([
-        fetch('/api/groups'),
-        fetch('/api/products')
-      ]);
-
-      groups = await groupsRes.json();
-      products = await productsRes.json();
-
-      // Restore orders from snapshot
-      const restoredOrders: Order[] = [];
-      for (const orderData of snapshot.summary.orders || []) {
-        const product = products.find(p => p.name === orderData.product_name);
-        if (product) {
-          restoredOrders.push({
-            id: `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            product_id: product.id,
-            qty: orderData.qty,
-            production_date: productionDate
-          });
-        }
-      }
-      orders = restoredOrders;
-
-      // Restore leftovers from snapshot
-      leftovers = snapshot.summary.leftovers || {};
-    } catch (err) {
-      console.error('Failed to restore from snapshot:', err);
-      await loadData();
     }
   }
 
@@ -355,18 +229,17 @@
         body: JSON.stringify(existing)
       });
     } else {
-      const newOrder = {
-        id: Date.now() + Math.random() + '',
-        product_id: product.id,
-        qty,
-        production_date: productionDate
-      };
-      orders = [...orders, newOrder];
-      await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrder)
+        body: JSON.stringify({ product_id: product.id, qty, production_date: productionDate })
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to add order');
+        return;
+      }
+      orders = [...orders, await res.json()];
     }
 
     search = '';

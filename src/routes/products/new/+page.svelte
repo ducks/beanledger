@@ -32,7 +32,6 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: `p${Date.now()}`,
           name: form.name,
           lbs: parseWeight(form.lbs, $units),
           group_id: form.group_id,

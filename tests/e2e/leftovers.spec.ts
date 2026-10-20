@@ -26,17 +26,14 @@ test('manual leftovers survive before the first completed day, and after it', as
   expect(res.status()).toBe(200);
   expect(await res.json()).toEqual([{ group_id: groupId, lbs: 4.5, tenant_id: expect.any(String) }]);
 
-  // Complete day one with a snapshot that predicts 2 lb left over.
+  // Complete day one. The server records the snapshot from database
+  // state: the 4.5 lb the roaster confirmed is what carries forward.
   await page.request.post('/api/production-days', { data: { production_date: '2026-10-02', status: 'active' } });
-  await page.request.post('/api/snapshots', {
-    data: { production_date: '2026-10-02', orders: [], leftovers: { [groupId]: 2 }, groups: [], products: [] }
-  });
   await page.request.patch('/api/production-days/2026-10-02', { data: { status: 'completed' } });
 
-  // Day two: the completed snapshot is the baseline; the stale manual row
-  // from before completion no longer overrides it.
+  // Day two reads the completed snapshot as its baseline.
   res = await page.request.get('/api/leftovers?date=2026-10-03');
-  expect(await res.json()).toEqual([{ group_id: groupId, lbs: 2, tenant_id: expect.any(String) }]);
+  expect(await res.json()).toEqual([{ group_id: groupId, lbs: 4.5, tenant_id: expect.any(String) }]);
 
   // A manual correction entered after completion wins again.
   await page.request.post('/api/leftovers', { data: { group_id: groupId, lbs: 3.25 } });
