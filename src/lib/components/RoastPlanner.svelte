@@ -578,6 +578,7 @@
     {products}
     {groups}
     {leftovers}
+    {batchOverrides}
     {productionDate}
     units={$units}
     onClose={() => (showReports = false)}

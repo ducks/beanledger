@@ -251,3 +251,33 @@ describe('calcGroup', () => {
     expect(result.batchWeight).toBe(10.73); // Decaf batch weight
   });
 });
+
+describe('calcGroup batch weight', () => {
+  const group: RoastGroup = {
+    id: 'g1',
+    label: 'Decaf',
+    batch_type: 'decaf',
+    roast_loss_pct: 0,
+    type: 'single_origin',
+    components: [],
+    active: true,
+    created_at: '2026-01-01'
+  };
+  const products: Product[] = [
+    { id: 'p1', name: 'Decaf 1lb', lbs: 1, group_id: 'g1', active: true, created_at: '2026-01-01' }
+  ];
+  const orders: Order[] = [{ id: 'o1', product_id: 'p1', qty: 30, production_date: '2026-01-02' }];
+
+  it('uses the configured weight for the group batch type', () => {
+    // 30 lb needed at a 10.73 lb decaf batch is 3 batches, not 2 at the
+    // 20 lb fallback. Any caller that drops the overrides map (as Reports
+    // once did) gets the wrong batch count.
+    const withOverride = calcGroup(group, orders, products, 0, { decaf: 10.73 });
+    expect(withOverride.batchWeight).toBe(10.73);
+    expect(withOverride.batchesUp).toBe(3);
+
+    const withoutOverride = calcGroup(group, orders, products, 0, {});
+    expect(withoutOverride.batchWeight).toBe(20);
+    expect(withoutOverride.batchesUp).toBe(2);
+  });
+});

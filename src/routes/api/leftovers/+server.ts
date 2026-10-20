@@ -17,7 +17,6 @@ async function getSnapshotLeftovers(tenantId: string, productionDate: string): P
 
   // If the summary already has leftovers calculated, use them
   if (summaryData.leftovers && typeof summaryData.leftovers === 'object') {
-    console.log('[LEFTOVERS API] Using pre-calculated leftovers from summary');
     const leftoversData: Leftover[] = [];
     for (const [group_id, lbs] of Object.entries(summaryData.leftovers)) {
       if (typeof lbs === 'number' && lbs > 0) {
@@ -27,31 +26,9 @@ async function getSnapshotLeftovers(tenantId: string, productionDate: string): P
     return leftoversData;
   }
 
-  // If summary has complete data, calculate leftovers
-  if (summaryData.groups && summaryData.products && summaryData.orders) {
-    const { groups, products, orders, batchOverrides = {} } = summaryData;
-    const leftoversData: Leftover[] = [];
-
-    for (const group of groups) {
-      const groupProducts = products.filter((p: any) => p.group_id === group.id);
-      const totalNeeded = groupProducts.reduce((sum: number, p: any) => {
-        const productOrders = orders.filter((o: any) => o.product_name === p.name);
-        const needed = productOrders.reduce((s: number, o: any) => s + (p.lbs * o.qty), 0);
-        return sum + needed;
-      }, 0);
-
-      const batchSize = batchOverrides[group.id] || group.batch_size;
-      const batches = Math.ceil(totalNeeded / batchSize);
-      const totalRoasted = batches * batchSize;
-      const leftover = totalRoasted - totalNeeded;
-
-      if (leftover > 0) {
-        leftoversData.push({ group_id: group.id, lbs: leftover, tenant_id: tenantId });
-      }
-    }
-    return leftoversData;
-  }
-
+  // Older snapshots without a leftovers map carry nothing usable: the
+  // previous fallback read fields the planner never wrote (group.batch_size,
+  // overrides keyed by group id) and silently produced NaN.
   return [];
 }
 
@@ -71,8 +48,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     return json(result.rows);
   }
 
-  console.log('[LEFTOVERS API] Requested date:', date);
-
   // Find the most recent completed production day before the requested date
   const previousDay = await query(
     `SELECT production_date, completed_at
@@ -85,9 +60,19 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     [locals.tenant.id, date]
   );
 
-  console.log('[LEFTOVERS API] Previous completed day:', previousDay.rows);
+  // Precedence: the previous completed day's snapshot is the baseline, and
+  // manual rows entered after that completion override it per group. With
+  // no completed day yet there is no baseline, so the manual rows are the
+  // whole answer; returning [] here was why a new tenant's first-day
+  // leftovers disappeared on reload.
+  if (previousDay.rows.length === 0) {
+    const manual = await query<Leftover>(
+      'SELECT group_id, lbs, tenant_id FROM leftovers WHERE tenant_id = $1 AND lbs > 0',
+      [locals.tenant.id]
+    );
+    return json(manual.rows);
+  }
 
-  // Check for manual leftover overrides (updated after the previous day was completed)
   const completedAt = previousDay.rows[0]?.completed_at;
   if (completedAt) {
     const manualOverrides = await query<Leftover>(
@@ -97,8 +82,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     );
 
     if (manualOverrides.rows.length > 0) {
-      console.log('[LEFTOVERS API] Found manual overrides:', manualOverrides.rows);
-
       // Start with snapshot leftovers, then overlay manual overrides
       const snapshotLeftovers = await getSnapshotLeftovers(locals.tenant.id, previousDay.rows[0].production_date);
       const merged = new Map<string, number>();
@@ -118,12 +101,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
       }
       return json(leftoversData);
     }
-  }
-
-  // If no previous day, return empty leftovers
-  if (previousDay.rows.length === 0) {
-    console.log('[LEFTOVERS API] No previous completed day found');
-    return json([]);
   }
 
   const leftoversData = await getSnapshotLeftovers(locals.tenant.id, previousDay.rows[0].production_date);
