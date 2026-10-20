@@ -8,6 +8,7 @@
     products,
     groups,
     leftovers,
+    batchOverrides = {},
     productionDate,
     units,
     onClose
@@ -16,6 +17,10 @@
     products: Product[];
     groups: RoastGroup[];
     leftovers: Record<string, number>;
+    /** Batch weights by batch type, same map the planner uses. Without it
+     *  every group would be computed at the 20 lb fallback and the report
+     *  would disagree with the planner. */
+    batchOverrides?: Record<string, number>;
     productionDate: string;
     units: 'lbs' | 'kg';
     onClose: () => void;
@@ -112,7 +117,7 @@
   const plan = $derived(
     groups.map((g) => ({
       ...g,
-      calc: calcGroup(g, rangeOrders, products, leftovers[g.id] ?? 0, {})
+      calc: calcGroup(g, rangeOrders, products, leftovers[g.id] ?? 0, batchOverrides)
     }))
   );
 
