@@ -41,7 +41,7 @@ BeanLedger helps coffee roasters plan production:
 - **Backend**: SvelteKit server routes
 - **Database**: PostgreSQL
 - **Auth**: Session-based with scrypt password hashing
-- **Testing**: Vitest (14 tests covering core business logic)
+- **Testing**: Vitest unit tests for the business logic and CSV parsing; Playwright API and UI tests against a real Postgres, run in CI and before every release
 - **Deployment**: Node.js 22, NixOS service
 
 ## Accounts
@@ -89,10 +89,15 @@ pnpm install
 pnpm dev
 
 # Run tests
-pnpm test              # Run once
+pnpm test              # Unit tests, run once
 pnpm test:watch        # Watch mode
 pnpm test:ui           # Interactive UI
+pnpm test:e2e          # Playwright against a throwaway Postgres (needs Docker)
+make check             # Type-check + unit + e2e, the same gate CI runs
 ```
+
+After upgrading `@playwright/test`, run `pnpm exec playwright install chromium`
+once so the matching browser build is present; CI does this on every run.
 
 ## Recent Updates
 
