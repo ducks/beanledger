@@ -1,4 +1,4 @@
-import { type CsvFormat, parseHeaders } from './types';
+import { type CsvFormat, parseCsv } from './types';
 import { tradeFormat } from './trade';
 import { shipstationFormat } from './shipstation';
 
@@ -18,9 +18,9 @@ export function getFormat(id: string): CsvFormat | undefined {
  * Returns the first matching format, or undefined if no format matches.
  */
 export function detectFormat(csvText: string): CsvFormat | undefined {
-  const firstLine = csvText.trim().split('\n')[0];
-  if (!firstLine) return undefined;
+  const first = parseCsv(csvText)[0];
+  if (!first) return undefined;
 
-  const headers = parseHeaders(firstLine);
+  const headers = first.map((h) => h.toLowerCase());
   return formats.find((f) => f.detect(headers));
 }

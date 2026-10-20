@@ -16,16 +16,83 @@ export interface CsvFormat {
   parse(csvText: string): CsvRow[];
 }
 
-/** Split a header line into normalized (trimmed, unquoted, lowercased) headers */
-export function parseHeaders(headerLine: string): string[] {
-  return headerLine
-    .split(',')
-    .map((h) => h.replace(/^"|"$/g, '').trim().toLowerCase());
+/**
+ * Tokenize CSV text into records (RFC 4180): fields are separated by
+ * commas, a field may be wrapped in double quotes, a quoted field may
+ * contain commas, newlines, and doubled quotes (`""`) for a literal quote.
+ * Handles CRLF line endings and a leading UTF-8 BOM. Blank lines are
+ * dropped. Field values are trimmed; quoting is not preserved.
+ */
+export function parseCsv(text: string): string[][] {
+  const input = text.startsWith('\uFEFF') ? text.slice(1) : text;
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = '';
+  let quoted = false;
+  let i = 0;
+
+  const endField = () => {
+    record.push(field.trim());
+    field = '';
+  };
+  const endRecord = () => {
+    endField();
+    if (record.some((value) => value !== '')) records.push(record);
+    record = [];
+  };
+
+  while (i < input.length) {
+    const ch = input[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (input[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        quoted = false;
+        i += 1;
+        continue;
+      }
+      field += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === '"' && field.trim() === '') {
+      quoted = true;
+      field = '';
+      i += 1;
+      continue;
+    }
+    if (ch === ',') {
+      endField();
+      i += 1;
+      continue;
+    }
+    if (ch === '\r') {
+      i += 1;
+      continue;
+    }
+    if (ch === '\n') {
+      endRecord();
+      i += 1;
+      continue;
+    }
+    field += ch;
+    i += 1;
+  }
+  if (field !== '' || record.length > 0) endRecord();
+  return records;
 }
 
-/** Split a CSV line into trimmed, unquoted columns (simple parser, no embedded commas) */
+/** Header names, normalized (trimmed, unquoted, lowercased). */
+export function parseHeaders(headerLine: string): string[] {
+  return (parseCsv(headerLine)[0] ?? []).map((h) => h.toLowerCase());
+}
+
+/** Split one CSV line into trimmed, unquoted columns. */
 export function splitCsvLine(line: string): string[] {
-  return line.split(',').map((c) => c.replace(/^"|"$/g, '').trim());
+  return parseCsv(line)[0] ?? [];
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { CsvRow } from '../types';
-import { parseHeaders, splitCsvLine } from './types';
+import { parseCsv } from './types';
 
 /**
  * Product name field specification.
@@ -88,12 +88,12 @@ export function parseWithConfig(
   csvText: string,
   config: GenericFormatConfig
 ): CsvRow[] {
-  const lines = csvText.trim().split('\n');
-  if (lines.length < 2) {
+  const records = parseCsv(csvText);
+  if (records.length < 2) {
     throw new Error('CSV must have at least a header and one data row');
   }
 
-  const headers = parseHeaders(lines[0]);
+  const headers = records[0].map((h) => h.toLowerCase());
   const headerIndex = new Map(headers.map((h, i) => [h, i]));
 
   const missing = validateColumns(config.productNameColumn, config.quantityColumn, headerIndex);
@@ -106,11 +106,7 @@ export function parseWithConfig(
   const rows: CsvRow[] = [];
   const tally = new Map<string, number>();
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const cols = splitCsvLine(line);
+  for (const cols of records.slice(1)) {
     const productName = resolveProductName(config.productNameColumn, cols, headerIndex);
     const qty = parseInt(cols[qtyCol], 10);
 

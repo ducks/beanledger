@@ -1,5 +1,5 @@
 import type { CsvRow } from '../types';
-import { type CsvFormat, parseHeaders, splitCsvLine, formatBatchSize } from './types';
+import { type CsvFormat, parseCsv, formatBatchSize } from './types';
 
 /**
  * TRADE batch format: aggregates rows by internal_id + size.
@@ -19,23 +19,19 @@ export const tradeFormat: CsvFormat = {
   },
 
   parse(csvText) {
-    const lines = csvText.trim().split('\n');
-    if (lines.length < 2) {
+    const records = parseCsv(csvText);
+    if (records.length < 2) {
       throw new Error('CSV must have at least a header and one data row');
     }
 
-    const headers = parseHeaders(lines[0]);
+    const headers = records[0].map((h) => h.toLowerCase());
     const internalIdCol = headers.indexOf('internal_id');
     const sizeCol = headers.indexOf('size');
     const quantityCol = headers.indexOf('quantity');
 
     const tally = new Map<string, number>();
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      const cols = splitCsvLine(line);
+    for (const cols of records.slice(1)) {
       if (cols.length < Math.max(internalIdCol, sizeCol, quantityCol) + 1) continue;
 
       const internalId = cols[internalIdCol];
