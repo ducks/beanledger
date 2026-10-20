@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test';
 import { Client } from 'pg';
 
 const TEST_DATABASE_URL =
@@ -39,6 +39,29 @@ async function signupTestUser(baseURL: string) {
   if (!res.ok) {
     throw new Error(`Failed to seed test user: ${res.status} ${await res.text()}`);
   }
+}
+
+/**
+ * A logged-in API context for a brand-new tenant, separate from the
+ * default test user. Used by isolation tests; dispose it when done.
+ */
+export async function signupTenant(
+  baseURL: string,
+  name: string
+): Promise<APIRequestContext> {
+  const context = await playwrightRequest.newContext({ baseURL });
+  const res = await context.post('/api/auth/signup', {
+    data: {
+      username: `${name}-user`,
+      email: `${name}@example.com`,
+      password: 'anotherpass1234',
+      tenantName: `${name} Roastery`
+    }
+  });
+  if (!res.ok()) {
+    throw new Error(`Failed to sign up ${name}: ${res.status()} ${await res.text()}`);
+  }
+  return context;
 }
 
 export const test = base.extend<{ seed: void }>({

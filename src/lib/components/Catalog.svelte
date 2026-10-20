@@ -335,7 +335,7 @@
 
   async function saveProduct() {
     const productData = {
-      id: editingProduct ? productFormId : `p${Date.now()}`,
+      id: editingProduct ? productFormId : undefined,
       name: productFormName,
       lbs: productFormLbs,
       group_id: productFormGroupId,
@@ -376,7 +376,7 @@
 
   async function saveAlias() {
     const aliasData = {
-      id: editingAlias?.id ?? `alias_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      id: editingAlias?.id,
       alias_name: aliasFormName,
       product_id: aliasFormProductId,
       active: editingAlias?.active ?? true

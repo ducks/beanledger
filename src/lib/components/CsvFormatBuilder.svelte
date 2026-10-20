@@ -133,7 +133,7 @@
     error = '';
 
     const data = {
-      id: editing?.id ?? `fmt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      id: editing?.id,
       name: name.trim(),
       description: description.trim() || null,
       config: {
