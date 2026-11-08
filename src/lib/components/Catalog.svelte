@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
   import CsvFormatBuilder from './CsvFormatBuilder.svelte';
   import { units } from '$lib/stores/units';
@@ -6,13 +7,15 @@
 
   let {
     onClose,
-    onUpdate
+    onUpdate,
+    initialTab = 'products'
   }: {
     onClose: () => void;
     onUpdate: () => void;
+    initialTab?: 'products' | 'groups' | 'aliases' | 'formats';
   } = $props();
 
-  let tab = $state<'products' | 'groups' | 'aliases' | 'formats'>('products');
+  let tab = $state<'products' | 'groups' | 'aliases' | 'formats'>(untrack(() => initialTab));
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
   let batchTypes = $state<BatchOverride[]>([]);

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import GettingStarted from './GettingStarted.svelte';
   import Catalog from './Catalog.svelte';
   import Settings from './Settings.svelte';
   import Packaging from './Packaging.svelte';
@@ -21,8 +23,20 @@
   let newDayDate = $state(new Date().toISOString().slice(0, 10));
   let activeDay: ProductionDay | null = $state(null);
   let showCatalog = $state(false);
+  let catalogInitialTab = $state<'products' | 'formats'>('products');
   let showSettings = $state(false);
   let showPackaging = $state(false);
+  let showGuide = $state(false);
+  let guideInitialized = false;
+
+  function guideKey() {
+    return `beanledger:getting-started:v1:${$page.data.tenant?.id}:${$page.data.user?.id}`;
+  }
+
+  function dismissGuide() {
+    showGuide = false;
+    try { localStorage.setItem(guideKey(), 'dismissed'); } catch { /* Guide remains usable without storage. */ }
+  }
 
   onMount(async () => {
     await loadDays();
@@ -38,6 +52,12 @@
       if (!Array.isArray(data.days)) throw new Error('Invalid production days response');
       days = data.days;
       activeDay = days.find(d => d.status === 'active') || null;
+      if (!guideInitialized) {
+        guideInitialized = true;
+        let dismissed = false;
+        try { dismissed = localStorage.getItem(guideKey()) === 'dismissed'; } catch { /* Use in-memory state. */ }
+        showGuide = days.length === 0 && !dismissed;
+      }
     } catch (err) {
       console.error('Failed to load production days:', err);
       daysError = 'Could not load roast days. Please try again.';
@@ -183,7 +203,8 @@
   <header>
     <h1>BeanLedger</h1>
     <div class="header-actions">
-      <button class="action-button" onclick={() => showCatalog = true}>
+      <button class="action-button" onclick={() => showGuide = true}>Getting started</button>
+      <button class="action-button" onclick={() => { catalogInitialTab = 'products'; showCatalog = true; }}>
         ⚙ Catalog
       </button>
       <button class="action-button" onclick={() => showSettings = true}>
@@ -197,6 +218,17 @@
       </button>
     </div>
   </header>
+
+  {#if showGuide}
+    <GettingStarted
+      onDismiss={dismissGuide}
+      onSettings={() => showSettings = true}
+      onCatalog={() => { catalogInitialTab = 'products'; showCatalog = true; }}
+      onCsvFormats={() => { catalogInitialTab = 'formats'; showCatalog = true; }}
+      onStartDay={startNewDay}
+      startDisabled={loading || daysLoading || !!daysError}
+    />
+  {/if}
 
   {#if error}
     <div class="error">{error}</div>
@@ -310,6 +342,7 @@
   <Catalog
     onClose={() => (showCatalog = false)}
     onUpdate={() => {}}
+    initialTab={catalogInitialTab}
   />
 {/if}
 
@@ -345,6 +378,12 @@
     display: flex;
     gap: 0.75rem;
     align-items: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 760px) {
+    header { align-items: flex-start; flex-direction: column; gap: 1rem; }
+    .dashboard { padding: 1rem; }
   }
 
   .action-button {

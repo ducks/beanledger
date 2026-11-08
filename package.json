@@ -17,7 +17,8 @@
     "test:ui": "vitest --ui",
     "e2e:server": "node scripts/migrate.js && vite dev --port 4173",
     "test:e2e": "node scripts/run-e2e.js",
-    "test:e2e:ui": "node scripts/run-e2e.js --ui"
+    "test:e2e:ui": "node scripts/run-e2e.js --ui",
+    "screenshots": "node scripts/run-e2e.js --config=playwright.screenshots.config.ts && node scripts/build-screenshot-gallery.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

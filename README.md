@@ -99,6 +99,20 @@ make check             # Type-check + unit + e2e, the same gate CI runs
 After upgrading `@playwright/test`, run `pnpm exec playwright install chromium`
 once so the matching browser build is present; CI does this on every run.
 
+## Screenshot gallery
+
+Run `pnpm screenshots` to capture desktop and mobile views using Playwright and
+an isolated, disposable Docker PostgreSQL database. The suite creates a
+fictional roastery and writes the gallery to `artifacts/screenshot-site/`.
+It covers the main routes, the getting-started walkthrough, and key planner,
+catalog and account screens. It does not connect to production data.
+
+The **Publish screenshot gallery** GitHub Actions workflow runs manually and
+publishes that generated gallery to GitHub Pages. GitHub lists a manually
+triggered workflow after its workflow file exists on the default branch. Review
+the screenshots before publishing; the site is public. Only the whitelisted
+screenshots and gallery HTML are included in the generated Pages artifact.
+
 ## Recent Updates
 
 ### 2026-03-21
