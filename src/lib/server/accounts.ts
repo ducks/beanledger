@@ -4,8 +4,8 @@
  */
 import { createHash, randomBytes } from 'crypto';
 import type pg from 'pg';
-import { query } from '$lib/db';
-import { sendMail, linkBase } from './mail';
+import { query, withTransaction } from '$lib/db';
+import { sendMail, linkBase, assertMailConfigured } from './mail';
 
 type Queryable = Pick<pg.PoolClient, 'query'>;
 
@@ -37,6 +37,9 @@ export async function issueEmailToken(
 ): Promise<string> {
   const raw = newToken();
   const minutes = kind === 'verify' ? VERIFY_TOKEN_HOURS * 60 : RESET_TOKEN_MINUTES;
+  // All callers use a transaction: serialize replacements so concurrent
+  // requests cannot leave multiple unused tokens of the same kind.
+  await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`email-token:${kind}:${userId}`]);
   // A fresh token replaces any outstanding one of the same kind.
   await db.query('DELETE FROM email_tokens WHERE user_id = $1 AND kind = $2 AND used_at IS NULL', [userId, kind]);
   await db.query(
@@ -63,20 +66,24 @@ export async function consumeEmailToken(
 }
 
 export async function sendVerificationMail(db: Queryable, user: { id: string; email: string }, origin: string): Promise<void> {
+  const base = linkBase(origin);
+  assertMailConfigured();
   const token = await issueEmailToken(db, user.id, 'verify');
   await sendMail({
     to: user.email,
     subject: 'Verify your BeanLedger email',
-    text: `Confirm this address for your BeanLedger account:\n\n${linkBase(origin)}/verify?token=${token}\n\nThe link is valid for ${VERIFY_TOKEN_HOURS} hours. If you did not sign up, ignore this message.`
+    text: `Confirm this address for your BeanLedger account:\n\n${base}/verify?token=${token}\n\nThe link is valid for ${VERIFY_TOKEN_HOURS} hours. If you did not sign up, ignore this message.`
   });
 }
 
 export async function sendResetMail(db: Queryable, user: { id: string; email: string }, origin: string): Promise<void> {
+  const base = linkBase(origin);
+  assertMailConfigured();
   const token = await issueEmailToken(db, user.id, 'reset');
   await sendMail({
     to: user.email,
     subject: 'Reset your BeanLedger password',
-    text: `Choose a new password here:\n\n${linkBase(origin)}/reset-password?token=${token}\n\nThe link is valid for ${RESET_TOKEN_MINUTES} minutes. If you did not ask for this, your password is unchanged.`
+    text: `Choose a new password here:\n\n${base}/reset-password?token=${token}\n\nThe link is valid for ${RESET_TOKEN_MINUTES} minutes. If you did not ask for this, your password is unchanged.`
   });
 }
 
@@ -90,6 +97,8 @@ export async function createInvite(
   role: 'owner' | 'staff',
   origin: string
 ): Promise<{ id: string }> {
+  const base = linkBase(origin);
+  assertMailConfigured();
   const raw = newToken();
   await db.query('DELETE FROM invites WHERE tenant_id = $1 AND email = $2 AND accepted_at IS NULL', [tenant.id, email]);
   const result = await db.query<{ id: string }>(
@@ -100,7 +109,7 @@ export async function createInvite(
   await sendMail({
     to: email,
     subject: `You're invited to ${tenant.name} on BeanLedger`,
-    text: `You have been invited to join ${tenant.name} as ${role}.\n\nAccept here:\n\n${linkBase(origin)}/invite?token=${raw}\n\nThe invitation is valid for ${INVITE_DAYS} days.`
+    text: `You have been invited to join ${tenant.name} as ${role}.\n\nAccept here:\n\n${base}/invite?token=${raw}\n\nThe invitation is valid for ${INVITE_DAYS} days.`
   });
   return result.rows[0];
 }
@@ -120,6 +129,25 @@ export async function findInvite(db: Queryable, raw: string): Promise<PendingInv
     [hashToken(raw)]
   );
   return result.rows[0] ?? null;
+}
+
+// Serialize checks for the same key so concurrent requests cannot all pass
+// a check-then-insert race. The lock and insert are scoped to one transaction.
+export async function consumeRateLimit(key: string, maximum: number, windowMinutes: number): Promise<boolean> {
+  return withTransaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+    await client.query(
+      'DELETE FROM login_attempts WHERE key = $1 AND attempted_at <= CURRENT_TIMESTAMP - make_interval(mins => $2)',
+      [key, windowMinutes]
+    );
+    const result = await client.query<{ n: string }>(
+      'SELECT COUNT(*) AS n FROM login_attempts WHERE key = $1 AND attempted_at > CURRENT_TIMESTAMP - make_interval(mins => $2)',
+      [key, windowMinutes]
+    );
+    if (Number(result.rows[0].n) >= maximum) return false;
+    await client.query('INSERT INTO login_attempts (key) VALUES ($1)', [key]);
+    return true;
+  });
 }
 
 // ---- login rate limiting ---------------------------------------------------

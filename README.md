@@ -53,14 +53,28 @@ links sent by email, so the server needs a mail transport:
 
 | Variable | Meaning |
 |---|---|
-| `MAIL_TRANSPORT` | `console` (default, logs the message), `file` (append to `MAIL_OUTBOX`; used by tests), or `smtp` |
+| `MAIL_TRANSPORT` | `smtp` is required in production. In development, `console` (default, logs the message) and `file` (append to `MAIL_OUTBOX`; used by tests) are also available. |
 | `SMTP_URL` | e.g. `smtps://user:pass@smtp.example.com:465` when `MAIL_TRANSPORT=smtp` |
 | `MAIL_FROM` | sender address for SMTP |
-| `ORIGIN` | public base URL used in emailed links (already required by adapter-node) |
-| `ADDRESS_HEADER` | set to `X-Forwarded-For` behind a reverse proxy so login rate limiting sees the client address |
+| `ORIGIN` | public HTTPS origin used in emailed links; required in production, with no path, query, or credentials |
+| `ADDRESS_HEADER` | the client-address header provided by a trusted reverse proxy, if used |
 
 Failed logins are limited to 10 per 15 minutes per username and per address.
 Resetting a password signs out every session for that user.
+Signup requests are limited to five per address per 15 minutes, and verification
+resends to five per unverified user per 15 minutes. These limits serialize
+concurrent attempts in PostgreSQL. Users behind a shared address share the
+signup limit.
+
+For a hosted deployment, keep the Node listener private behind the configured
+proxy, and use `ADDRESS_HEADER` only when that proxy strips or overwrites
+client-supplied forwarding headers. Otherwise an attacker could spoof the
+address used for rate limiting. These application limits are not a substitute
+for an edge request limit or monitoring. Production account emails fail closed
+if SMTP or the public HTTPS origin is missing; configure delivery before
+enabling signup or account recovery. Test delivery and monitor errors.
+Password reset requests return the same success response for known and unknown
+addresses even if delivery fails; check server logs for delivery errors.
 
 ## Multi-Tenancy
 
