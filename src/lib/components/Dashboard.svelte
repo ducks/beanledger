@@ -13,6 +13,8 @@
   }
 
   let days = $state<ProductionDay[]>([]);
+  let daysLoading = $state(true);
+  let daysError = $state('');
   let loading = $state(false);
   let error = $state('');
   let showNewDayModal = $state(false);
@@ -27,14 +29,20 @@
   });
 
   async function loadDays() {
+    daysLoading = true;
+    daysError = '';
     try {
       const res = await fetch('/api/production-days');
+      if (!res.ok) throw new Error(`Production days request failed (${res.status})`);
       const data = await res.json();
-      days = data.days || [];
+      if (!Array.isArray(data.days)) throw new Error('Invalid production days response');
+      days = data.days;
       activeDay = days.find(d => d.status === 'active') || null;
     } catch (err) {
       console.error('Failed to load production days:', err);
-      error = 'Failed to load production days';
+      daysError = 'Could not load roast days. Please try again.';
+    } finally {
+      daysLoading = false;
     }
   }
 
@@ -184,7 +192,7 @@
       <button class="action-button" onclick={() => showPackaging = true}>
         ▤ Packaging
       </button>
-      <button class="primary-button" onclick={startNewDay} disabled={loading}>
+      <button class="primary-button" onclick={startNewDay} disabled={loading || daysLoading || !!daysError}>
         + Start New Roast Day
       </button>
     </div>
@@ -194,7 +202,14 @@
     <div class="error">{error}</div>
   {/if}
 
-  {#if days.length === 0}
+  {#if daysLoading}
+    <p>Loading roast days…</p>
+  {:else if daysError}
+    <div class="error" role="alert">
+      <p>{daysError}</p>
+      <button onclick={loadDays}>Try again</button>
+    </div>
+  {:else if days.length === 0}
     <div class="empty-state">
       <p>No roast days yet. Start planning your first roast!</p>
     </div>
