@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { withTransaction } from '$lib/db';
+import { query, withTransaction } from '$lib/db';
 import { commitPackagingUsage, lockProductionDay, reversePackagingUsage } from '$lib/server/packaging';
 import { writeCompletionSnapshot } from '$lib/server/snapshot';
 import { handle, readBody, requireEnum, paramDate } from '$lib/server/validate';
@@ -33,27 +33,26 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
       }
 
       if (day.status !== status) {
-        try {
-          await client.query(
-            `UPDATE production_days
-             SET status = $1,
-                 completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
-             WHERE production_date = $2 AND tenant_id = $3`,
-            [status, date, tenantId]
-          );
-        } catch (err) {
-          const pgError = err as { code?: string; constraint?: string };
-          if (pgError.code === '23505' && pgError.constraint === 'production_days_one_active_idx') {
-            const active = await client.query<{ production_date: string }>(
-              "SELECT production_date::text FROM production_days WHERE tenant_id = $1 AND status = 'active'",
-              [tenantId]
-            );
-            return { kind: 'active-conflict' as const, activeDay: active.rows[0]?.production_date };
-          }
-          throw err;
-        }
+        await client.query(
+          `UPDATE production_days
+           SET status = $1,
+               completed_at = CASE WHEN $1 = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+           WHERE production_date = $2 AND tenant_id = $3`,
+          [status, date, tenantId]
+        );
       }
       return { kind: 'success' as const };
+    }).catch(async (err: unknown) => {
+      const pgError = err as { code?: string; constraint?: string };
+      if (pgError?.code === '23505' && pgError.constraint === 'production_days_one_active_idx') {
+        // The failed transaction has been rolled back before querying again.
+        const active = await query<{ production_date: string }>(
+          "SELECT production_date::text FROM production_days WHERE tenant_id = $1 AND status = 'active'",
+          [tenantId]
+        );
+        return { kind: 'active-conflict' as const, activeDay: active.rows[0]?.production_date };
+      }
+      throw err;
     });
 
     if (result.kind === 'not-found') return json({ error: 'Roast day not found' }, { status: 404 });
