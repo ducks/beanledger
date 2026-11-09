@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, query } from '$lib/db';
+import { query, withTransaction } from '$lib/db';
 import { loginBlocked, recordLoginFailure, sendResetMail } from '$lib/server/accounts';
 import { handle, readBody, requireString } from '$lib/server/validate';
 
@@ -19,7 +19,13 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
     await recordLoginFailure(`reset:${email}`, address);
     const result = await query<{ id: string; email: string }>('SELECT id, email FROM users WHERE email = $1', [email]);
     if (result.rows[0]) {
-      await sendResetMail(getDb(), result.rows[0], url.origin);
+      try {
+        await withTransaction((client) => sendResetMail(client, result.rows[0], url.origin));
+      } catch (error) {
+        // A delivery error must not reveal whether the address has an account.
+        // Keep the failure visible to operators; the transaction rolls back.
+        console.error('Password reset delivery failed:', error);
+      }
     }
     return json({ success: true });
   });

@@ -45,9 +45,20 @@
   }
 
   let resent = $state(false);
+  let resendError = $state('');
   async function resendVerification() {
-    const res = await fetch('/api/auth/resend-verification', { method: 'POST' });
-    resent = res.ok;
+    resendError = '';
+    try {
+      const res = await fetch('/api/auth/resend-verification', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        resendError = data.error || 'Could not send verification email. Please try again.';
+        return;
+      }
+      resent = true;
+    } catch {
+      resendError = 'Could not send verification email. Please try again.';
+    }
   }
 
   async function handleLogout() {
@@ -86,6 +97,7 @@
     {:else}
       <button onclick={resendVerification}>Resend link</button>
     {/if}
+    {#if resendError}<span role="alert">{resendError}</span>{/if}
   </div>
 {/if}
 

@@ -3,12 +3,15 @@ import type { RequestHandler } from './$types';
 import { query, withTransaction } from '$lib/db';
 import { hashPassword, generateSessionId } from '$lib/auth';
 import { handle, readBody, requireString, ValidationError } from '$lib/server/validate';
-import { sendVerificationMail } from '$lib/server/accounts';
+import { consumeRateLimit, sendVerificationMail } from '$lib/server/accounts';
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,32}$/;
 
-export const POST: RequestHandler = async ({ request, cookies, url }) => {
+export const POST: RequestHandler = async ({ request, cookies, url, getClientAddress }) => {
   return handle('Signup', async () => {
+    if (!(await consumeRateLimit(`signup:addr:${getClientAddress()}`, 5, 15))) {
+      return json({ error: 'Too many signup attempts. Try again in a few minutes.' }, { status: 429 });
+    }
     const body = await readBody(request);
     const username = requireString(body, 'username', 32);
     const email = requireString(body, 'email', 254).toLowerCase();
