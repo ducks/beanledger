@@ -113,6 +113,17 @@ make check             # Type-check + unit + e2e, the same gate CI runs
 After upgrading `@playwright/test`, run `pnpm exec playwright install chromium`
 once so the matching browser build is present; CI does this on every run.
 
+### Database migrations
+
+`pnpm migrate` serializes cooperating runners with a PostgreSQL advisory lock
+and applies each migration and its history record in one transaction. Migration
+SQL must be transaction-compatible: do not include transaction control or
+commands such as `CREATE INDEX CONCURRENTLY` that cannot run in a transaction.
+The lock does not coordinate with older versions of the runner or manual schema
+changes. Stop those before migrating, and verify a database backup and restore
+before applying migrations in production. The runner does not repair any schema
+changes left unrecorded by an earlier failed migration.
+
 ## Recent Updates
 
 ### 2026-03-21
