@@ -1,0 +1,47 @@
+/* Scoped proposal: existing screens keep their current styles. */
+.design-system {
+  --ds-space-1: .25rem;
+  --ds-space-2: .5rem;
+  --ds-space-3: .75rem;
+  --ds-space-4: 1rem;
+  --ds-space-6: 1.5rem;
+  --ds-space-8: 2rem;
+  --ds-radius-control: .625rem;
+  --ds-radius-panel: 1rem;
+  --ds-canvas: #f7f5f0;
+  --ds-surface: #fffefa;
+  --ds-ink: #302e29;
+  --ds-muted: #62645b;
+  --ds-line: #d7d7cd;
+  --ds-brand: #3f5945;
+  --ds-on-brand: #fff;
+  --ds-positive: #e3eddf;
+  --ds-positive-ink: #304b32;
+  --ds-error: #9c332c;
+  --ds-error-surface: #fff0ed;
+  color: var(--ds-ink);
+  background: var(--ds-canvas);
+  font-family: system-ui, sans-serif; /* Font decision intentionally open. */
+  line-height: 1.5;
+}
+.design-system[data-preview-theme='dark'] {
+  --ds-canvas: #1e211e;
+  --ds-surface: #282d28;
+  --ds-ink: #f0f0e6;
+  --ds-muted: #b8c1b6;
+  --ds-line: #50594e;
+  --ds-brand: #b8d0ad;
+  --ds-on-brand: #1b291c;
+  --ds-positive: #334634;
+  --ds-positive-ink: #cae0c3;
+  --ds-error: #ffb4a8;
+  --ds-error-surface: #422d28;
+  color-scheme: dark;
+}
+.design-system :focus-visible { outline: 3px solid var(--ds-brand); outline-offset: 3px; }
+.design-system input, .design-system select {
+  min-height: 44px; width: 100%; padding: .625rem .75rem;
+  border: 1px solid var(--ds-line); border-radius: var(--ds-radius-control);
+  background: var(--ds-surface); color: var(--ds-ink); font: inherit;
+}
+.design-system input[aria-invalid='true'] { border-color: var(--ds-error); }
