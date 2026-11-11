@@ -61,3 +61,14 @@ return focus to the trigger. Prototype dialogs are not implemented yet.
 This is an exploratory foundation, not an accessibility certification or a
 finished redesign. The earlier warmer dashboard remains on this spike branch;
 the workshop does not apply its scoped tokens to that dashboard yet.
+
+## Standalone GitHub Pages preview
+
+The interactive gallery is published at
+https://ducks.github.io/beanledger/design-system/ independently of the live app.
+Build it with `node scripts/build-design-preview.js`; generated files stay under
+ignored `artifacts/`. This uses the same Svelte source components but omits the
+app layout, authentication, database, and server routes. The Pages base path is
+explicitly configured for this repository. To republish, run the manual
+**Publish design explorations** GitHub Actions workflow from main. It replaces
+only `gh-pages/design-system`, preserving the existing screenshot gallery.
