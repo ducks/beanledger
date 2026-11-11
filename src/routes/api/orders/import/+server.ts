@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     }
 
     const [productsResult, aliasesResult] = await Promise.all([
-      query<Product>('SELECT * FROM products WHERE tenant_id = $1 AND active = true', [tenantId]),
+      query<Product>('SELECT p.* FROM products p JOIN roast_groups g ON g.id = p.group_id AND g.tenant_id = p.tenant_id WHERE p.tenant_id = $1 AND p.active = true AND g.active = true', [tenantId]),
       query<ImportAlias>('SELECT * FROM import_aliases WHERE tenant_id = $1 AND active = true', [tenantId])
     ]);
     const products = productsResult.rows;

@@ -80,7 +80,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 export const DELETE: RequestHandler = async ({ url, locals }) => {
   if (!locals.tenant) return json({ error: 'Unauthorized' }, { status: 401 });
   const tenantId = locals.tenant.id;
-  return handle('Delete product', async () => {
+  return handle('Archive product', async () => {
     const id = paramId(url.searchParams.get('id'), 'id');
     const outcome = await withTransaction(async (client) => {
       const exists = await client.query(
@@ -88,25 +88,10 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
         [id, tenantId]
       );
       if (exists.rows.length === 0) return 'not-found' as const;
-      const activeOrders = await client.query<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM orders o
-         JOIN production_days pd
-           ON o.production_date = pd.production_date AND o.tenant_id = pd.tenant_id
-         WHERE o.product_id = $1 AND o.tenant_id = $2 AND pd.status IN ('active', 'scheduled')`,
-        [id, tenantId]
-      );
-      if (parseInt(activeOrders.rows[0].count, 10) > 0) return 'in-use' as const;
-      await client.query('DELETE FROM orders WHERE product_id = $1 AND tenant_id = $2', [id, tenantId]);
-      await client.query('DELETE FROM products WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
-      return 'deleted' as const;
+      await client.query('UPDATE products SET active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+      return 'archived' as const;
     });
     if (outcome === 'not-found') return json({ error: 'Product not found' }, { status: 404 });
-    if (outcome === 'in-use') {
-      return json(
-        { error: 'Cannot delete product with orders on active or scheduled production days. Remove from those days first or mark as inactive instead.' },
-        { status: 400 }
-      );
-    }
     return json({ success: true });
   });
 };

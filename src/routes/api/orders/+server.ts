@@ -39,8 +39,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   });
 };
 
-async function productExists(productId: string, tenantId: string): Promise<boolean> {
-  const result = await query('SELECT 1 FROM products WHERE id = $1 AND tenant_id = $2', [productId, tenantId]);
+async function productExists(productId: string, tenantId: string, activeOnly = false): Promise<boolean> {
+  const result = await query(`SELECT 1 FROM products p JOIN roast_groups g ON g.id = p.group_id AND g.tenant_id = p.tenant_id WHERE p.id = $1 AND p.tenant_id = $2 AND (NOT $3 OR (p.active AND g.active))`, [productId, tenantId, activeOnly]);
   return result.rows.length > 0;
 }
 
@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   return handle('Create order', async () => {
     const body = await readBody(request);
     const productId = requireId(body, 'product_id');
-    if (!(await productExists(productId, tenantId))) {
+    if (!(await productExists(productId, tenantId, true))) {
       return json({ error: 'product_id does not name one of your products' }, { status: 400 });
     }
     const result = await query(
