@@ -1,7 +1,11 @@
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { build } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+
+// Generate the TypeScript config required by shared application calculations.
+execFileSync('pnpm', ['exec', 'svelte-kit', 'sync'], { stdio: 'inherit' });
 
 const root = path.resolve('artifacts/design-preview-source');
 const outDir = path.resolve('artifacts/design-preview');
