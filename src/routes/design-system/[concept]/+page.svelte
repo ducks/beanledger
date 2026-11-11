@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PlannerDemo from '$lib/design-system/PlannerDemo.svelte';
+  let showPlanner = $state(false);
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   let dark = $state(false);
@@ -13,6 +15,8 @@
   <div class="review"><a href="/design-system">← All explorations</a><span>Concept · synthetic data · fonts provisional</span><button onclick={() => dark = !dark}>{dark ? 'Light preview' : 'Dark preview'}</button></div>
   <nav class="directions" aria-label="Design explorations"><a href="/design-system/studio" aria-current={data.concept === 'studio' ? 'page' : undefined}>01 Journal</a><a href="/design-system/workbench" aria-current={data.concept === 'workbench' ? 'page' : undefined}>02 Workbench</a><a href="/design-system/guided" aria-current={data.concept === 'guided' ? 'page' : undefined}>03 Guided</a><a href="/design-system/ledger" aria-current={data.concept === 'ledger' ? 'page' : undefined}>04 Open ledger</a></nav>
   <main>
+    <button class="primary" onclick={() => showPlanner = !showPlanner}>{showPlanner ? '← Back to layout overview' : 'Try the interactive roast planner →'}</button>
+    {#if showPlanner}<PlannerDemo concept={data.concept}/>{:else}
     {#if data.concept === 'studio'}
       <header><p class="eyebrow">Tuesday, October 20 · Your roastery</p><h1>A good day<br/>starts here.</h1><p class="lede">A little space to plan, roast, and make something worth sharing.</p></header>
       <div class="journal-grid"><section class="feature"><p class="eyebrow">On the roasting schedule</p><h2>Tuesday’s roast</h2><p>Three coffees. 44 bags. One well-planned day.</p><button class="primary" onclick={() => message = 'The roast planner would open here.'}>Pick up where you left off →</button><div class="journal-stat"><strong>36 <small>lb</small></strong><span>roasted coffee needed</span></div></section><aside><h2>The week ahead</h2><div class="week"><span>WED</span><div><strong>Wholesale orders</strong><p>Scheduled · 2 customers</p></div></div><div class="week"><span>FRI</span><div><strong>Weekend stock</strong><p>Scheduled · quantities to review</p></div></div><button onclick={() => message = 'The scheduling form would open here.'}>Schedule another day</button></aside></div>
@@ -42,6 +46,7 @@
       </section>
     {/if}
     {#if message}<div class="feedback" role="status">{message} <button onclick={() => message = ''}>Dismiss</button></div>{/if}
+    {/if}
     <p class="prototype-note">Layout exploration only. Actions do not modify data.</p>
   </main>
 </div>

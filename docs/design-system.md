@@ -72,3 +72,15 @@ app layout, authentication, database, and server routes. The Pages base path is
 explicitly configured for this repository. To republish, run the manual
 **Publish design explorations** GitHub Actions workflow from main. It replaces
 only `gh-pages/design-system`, preserving the existing screenshot gallery.
+
+Each concept includes an interactive roast planner: a synthetic CSV mapping
+exercise, editable order quantities, batch size and carryover inputs, packing
+shortage resolution, and a completion summary. Calculations reuse `calcGroup`
+from the application; no API or persistence is involved. The mapping exercise
+uses a fixed sample rather than uploading a file. These are design experiments,
+not a commitment to the current demo's blocking rules or workflow steps.
+
+After building, run `node scripts/test-design-preview.js` to exercise all four
+flows, including mobile layouts and dark mode. Preview screenshots stay in
+ignored `artifacts/design-planners/`. The publishing workflow runs these checks
+before updating the gallery.

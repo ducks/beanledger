@@ -20,6 +20,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node scripts/build-design-preview.js
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: node scripts/test-design-preview.js
       - uses: actions/checkout@v4
         with:
           ref: gh-pages
