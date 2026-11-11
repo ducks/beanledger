@@ -143,7 +143,7 @@
   }
 
   const activeProducts = $derived(
-    products.filter((p) => groups.find((g) => g.id === p.group_id))
+    products.filter((p) => p.active && groups.some((g) => g.id === p.group_id && g.active))
   );
 
   const suggestions = $derived(

@@ -1,11 +1,6 @@
 import { test, expect, TEST_USER } from './fixtures';
 
-/**
- * Regression test for the silent-delete bug: when DELETE /api/products
- * returns a 4xx with an {error} body, the UI must alert the message
- * instead of pretending the delete succeeded.
- */
-test('shows the server error when a delete is refused', async ({ page }) => {
+test('archiving a product with active orders preserves the existing orders', async ({ page }) => {
   // Log in via the API so the spec doesn't depend on the form's
   // submit handler (separate bug, tracked elsewhere).
   const login = await page.request.post('/api/auth/login', {
@@ -55,10 +50,9 @@ test('shows the server error when a delete is refused', async ({ page }) => {
     data: { id: `o_${Date.now()}`, product_id: productId, qty: 5, production_date: today }
   });
 
-  // Now attempt the delete via the API directly — the contract is what
-  // the component reacts to.
+  // Legacy DELETE now archives rather than destroying historical records.
   const res = await page.request.delete(`/api/products?id=${productId}`);
-  expect(res.status()).toBe(400);
-  const body = await res.json();
-  expect(body.error).toMatch(/cannot delete product with orders/i);
+  expect(res.status()).toBe(200);
+  expect((await (await page.request.get(`/api/orders?date=${today}`)).json())[0].qty).toBe(5);
+  expect((await (await page.request.get('/api/products')).json()).find((p: any) => p.id === productId).active).toBe(false);
 });

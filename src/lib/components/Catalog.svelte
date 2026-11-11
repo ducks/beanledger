@@ -13,8 +13,12 @@
   } = $props();
 
   let tab = $state<'products' | 'groups' | 'aliases' | 'formats'>('products');
+  let archived = $state(false);
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
+  const visibleProducts = $derived(products.filter(p => p.active !== archived));
+  const visibleGroups = $derived(groups.filter(g => g.active !== archived));
+
   let batchTypes = $state<BatchOverride[]>([]);
   let aliases = $state<ImportAlias[]>([]);
   let csvFormats = $state<CsvFormat[]>([]);
@@ -53,7 +57,7 @@
   // Filtered lists based on search
   const filteredProducts = $derived(
     productSearch.trim()
-      ? products.filter(p => {
+      ? visibleProducts.filter(p => {
           const query = productSearch.toLowerCase();
           const groupName = groups.find(g => g.id === p.group_id)?.label.toLowerCase() || '';
           return (
@@ -63,7 +67,7 @@
             p.lbs.toString().includes(query)
           );
         })
-      : products
+      : visibleProducts
   );
 
   const filteredAliases = $derived(
@@ -81,7 +85,7 @@
 
   const filteredGroups = $derived(
     groupSearch.trim()
-      ? groups.filter(g => {
+      ? visibleGroups.filter(g => {
           const query = groupSearch.toLowerCase();
           return (
             g.label.toLowerCase().includes(query) ||
@@ -90,7 +94,7 @@
             g.type.toLowerCase().includes(query)
           );
         })
-      : groups
+      : visibleGroups
   );
 
   async function loadData() {
@@ -128,43 +132,43 @@
     }
   }
 
-  async function deleteProduct(id: string) {
-    if (!confirm('Delete this product?')) return;
+  async function archiveProduct(id: string) {
+    if (!confirm('Archive this product?')) return;
 
     try {
       const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Failed to delete product');
+        alert(data.error || 'Failed to archive product');
         return;
       }
 
       await loadData();
       onUpdate();
     } catch (err) {
-      console.error('Failed to delete product:', err);
-      alert('Network error while deleting product');
+      console.error('Failed to archive product:', err);
+      alert('Network error while archiving product');
     }
   }
 
-  async function deleteGroup(id: string) {
-    if (!confirm('Delete this roast group and all its products?')) return;
+  async function archiveGroup(id: string) {
+    if (!confirm('Archive this roast group and all its products?')) return;
 
     try {
       const res = await fetch(`/api/groups?id=${id}`, { method: 'DELETE' });
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Failed to delete group');
+        alert(data.error || 'Failed to archive group');
         return;
       }
 
       await loadData();
       onUpdate();
     } catch (err) {
-      console.error('Failed to delete group:', err);
-      alert('Network error while deleting group');
+      console.error('Failed to archive group:', err);
+      alert('Network error while archiving group');
     }
   }
 
@@ -182,9 +186,9 @@
     }
   }
 
-  async function deleteSelectedProducts() {
+  async function archiveSelectedProducts() {
     if (selectedProductIds.size === 0) return;
-    if (!confirm(`Delete ${selectedProductIds.size} product(s)?`)) return;
+    if (!confirm(`Archive ${selectedProductIds.size} product(s)?`)) return;
 
     const errorMessages = new Set<string>();
     let failed = 0;
@@ -207,7 +211,7 @@
     onUpdate();
     if (failed > 0) {
       const detail = errorMessages.size > 0 ? `\n\n${[...errorMessages].join('\n')}` : '';
-      alert(`${failed} product(s) could not be deleted.${detail}`);
+      alert(`${failed} product(s) could not be archived.${detail}`);
     }
   }
 
@@ -225,9 +229,9 @@
     }
   }
 
-  async function deleteSelectedGroups() {
+  async function archiveSelectedGroups() {
     if (selectedGroupIds.size === 0) return;
-    if (!confirm(`Delete ${selectedGroupIds.size} roast group(s) and all their products?`)) return;
+    if (!confirm(`Archive ${selectedGroupIds.size} roast group(s) and all their products?`)) return;
 
     let failed = 0;
     for (const id of selectedGroupIds) {
@@ -238,25 +242,29 @@
     selectedGroupIds = new Set();
     await loadData();
     onUpdate();
-    if (failed > 0) alert(`${failed} group(s) could not be deleted (may have active orders).`);
+    if (failed > 0) alert(`${failed} group(s) could not be archived. Please try again.`);
   }
 
   async function toggleProductActive(product: Product) {
-    await fetch('/api/products', {
+    if (product.active) { await archiveProduct(product.id); return; }
+    const response = await fetch('/api/products', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...product, active: !product.active })
     });
+    if (!response.ok) { alert('Could not update archive status. Please try again.'); return; }
     await loadData();
     onUpdate();
   }
 
   async function toggleGroupActive(group: RoastGroup) {
-    await fetch('/api/groups', {
+    if (group.active) { await archiveGroup(group.id); return; }
+    const response = await fetch('/api/groups', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...group, active: !group.active })
     });
+    if (!response.ok) { alert('Could not update archive status. Please try again.'); return; }
     await loadData();
     onUpdate();
   }
@@ -294,7 +302,7 @@
       roast_loss_pct: formRoastLossPct,
       type: formType,
       components: [],
-      active: true,
+      active: editingGroup?.active ?? true,
       created_at: new Date().toISOString().slice(0, 10)
     };
 
@@ -486,6 +494,13 @@
     </div>
 
     <div class="modal-body">
+      {#if tab === 'products' || tab === 'groups'}
+        <div class="tabs" aria-label="Catalog archive views">
+          <button class:active={!archived} onclick={() => { archived = false; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Active</button>
+          <button class:active={archived} onclick={() => { archived = true; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Archived</button>
+        </div>
+        {#if archived}<p>Archived items remain in reports and existing orders. Restore a group first, then restore the products you need.</p>{/if}
+      {/if}
       {#if loading}
         <div class="loading">Loading...</div>
       {:else if tab === 'products'}
@@ -499,11 +514,11 @@
           />
           <button class="add-button" onclick={openCreateProductForm}>+ Add Product</button>
         </div>
-        {#if selectedProductIds.size > 0}
+        {#if !archived && selectedProductIds.size > 0}
           <div class="bulk-bar">
             <span>{selectedProductIds.size} selected</span>
-            <button class="delete-button" onclick={deleteSelectedProducts}>
-              Delete Selected
+            <button class="delete-button" onclick={archiveSelectedProducts}>
+              Archive Selected
             </button>
           </div>
         {/if}
@@ -543,16 +558,13 @@
                       class="status-toggle"
                       onclick={() => toggleProductActive(product)}
                     >
-                      {product.active ? 'Active' : 'Inactive'}
+                      {product.active ? 'Archive' : 'Restore'}
                     </button>
                   </td>
                   <td>
                     <div class="action-buttons">
                       <button class="edit-button" onclick={() => openEditProductForm(product)}>
                         Edit
-                      </button>
-                      <button class="delete-button" onclick={() => deleteProduct(product.id)}>
-                        Delete
                       </button>
                     </div>
                   </td>
@@ -572,11 +584,11 @@
           />
           <button class="add-button" onclick={openCreateGroupForm}>+ Add Roast Group</button>
         </div>
-        {#if selectedGroupIds.size > 0}
+        {#if !archived && selectedGroupIds.size > 0}
           <div class="bulk-bar">
             <span>{selectedGroupIds.size} selected</span>
-            <button class="delete-button" onclick={deleteSelectedGroups}>
-              Delete Selected
+            <button class="delete-button" onclick={archiveSelectedGroups}>
+              Archive Selected
             </button>
           </div>
         {/if}
@@ -620,16 +632,13 @@
                       class="status-toggle"
                       onclick={() => toggleGroupActive(group)}
                     >
-                      {group.active ? 'Active' : 'Inactive'}
+                      {group.active ? 'Archive' : 'Restore'}
                     </button>
                   </td>
                   <td>
                     <div class="action-buttons">
                       <button class="edit-button" onclick={() => openEditGroupForm(group)}>
                         Edit
-                      </button>
-                      <button class="delete-button" onclick={() => deleteGroup(group.id)}>
-                        Delete
                       </button>
                     </div>
                   </td>
