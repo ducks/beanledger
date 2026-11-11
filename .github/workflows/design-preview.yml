@@ -1,0 +1,38 @@
+name: Publish design explorations
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: github-pages-publishing
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/build-design-preview.js
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: published
+      - name: Update only the design gallery
+        run: |
+          rm -rf published/design-system
+          cp -R artifacts/design-preview published/design-system
+          cd published
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add design-system
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish interactive design explorations'
+            git push origin HEAD:gh-pages
+          fi
