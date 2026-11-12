@@ -13,6 +13,7 @@ const base = '/beanledger/design-system/';
 fs.mkdirSync(root, { recursive: true });
 for (const [source, target] of [
   ['src/routes/design-system/+page.svelte', 'Workshop.svelte'],
+  ['src/routes/design-system/components/+page.svelte', 'Components.svelte'],
   ['src/routes/design-system/[concept]/+page.svelte', 'Concept.svelte']
 ]) {
   const code = fs.readFileSync(source, 'utf8')
@@ -25,12 +26,13 @@ fs.writeFileSync(path.join(root, 'entry.js'), `
 import { mount } from 'svelte';
 import Workshop from './Workshop.svelte';
 import Concept from './Concept.svelte';
+import Components from './Components.svelte';
 const concept = location.pathname.replace(/\\/index.html$/, '').replace(/\\/$/, '').split('/').pop();
-mount(['studio', 'workbench', 'guided', 'ledger'].includes(concept) ? Concept : Workshop,
+mount(['studio', 'workbench', 'guided', 'ledger'].includes(concept) ? Concept : concept === 'components' ? Components : Workshop,
   { target: document.getElementById('app'), props: { data: { concept } } });
 `);
 const input = {};
-for (const name of ['', 'studio', 'workbench', 'guided', 'ledger']) {
+for (const name of ['', 'studio', 'workbench', 'guided', 'ledger', 'components']) {
   const dir = path.join(root, name);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, 'index.html');

@@ -14,6 +14,14 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
+  await page.goto('http://127.0.0.1:5181/beanledger/design-system/');
+  await expect(page.getByRole('heading', {name:'Choose a workspace to explore.'})).toBeVisible();
+  await expect(page.getByRole('navigation', {name:'Interactive design concepts'}).getByRole('link')).toHaveCount(4);
+  await page.getByRole('link', {name:'component playground', exact:true}).click();
+  await expect(page.getByRole('heading', {name:'Component playground', exact:true})).toBeVisible();
+  await expect(page.getByRole('navigation', {name:'Prototype navigation'})).toHaveCount(0);
+  await page.getByRole('link', {name:'Design gallery'}).click();
+  await expect(page.getByRole('heading', {name:'Choose a workspace to explore.'})).toBeVisible();
   for (const concept of ['studio', 'workbench', 'guided', 'ledger']) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`http://127.0.0.1:5181/beanledger/design-system/${concept}/`);
@@ -39,7 +47,26 @@ try {
     await expect(page.getByRole('heading', { name: 'Ready for the next roast.' })).toBeVisible();
     await page.getByRole('button', { name: 'Reset demo' }).click();
     await expect(page.getByRole('heading', { name: 'What are we roasting?' })).toBeVisible();
-    console.log(`PASS ${concept}: mapping, validation, calculation, mobile, dark, packing, completion, reset`);
+    const navigation = page.getByRole('navigation', { name: 'Workspace navigation', exact: true });
+    await navigation.getByRole('button', { name: 'Catalog', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit House blend · 12 oz', exact: true }).click();
+    await page.getByLabel('Packaging', { exact: true }).selectOption('trade');
+    await page.getByRole('button', { name: 'Save product', exact: true }).click();
+    await navigation.getByRole('button', { name: 'Packing preview', exact: true }).click();
+    await expect(page.getByRole('row').filter({hasText:'10.9oz TRADE'}).getByRole('cell')).toHaveText(['200','24','176']);
+    await navigation.getByRole('button', { name: 'Roast planner', exact: true }).click();
+    await page.getByRole('button', {name:'Load sample orders'}).click();
+    await page.getByLabel('House blend · 12 oz quantity').fill('30');
+    await navigation.getByRole('button', { name: 'Packing preview', exact: true }).click();
+    await expect(page.getByRole('row').filter({hasText:'10.9oz TRADE'}).getByRole('cell')).toHaveText(['200','30','170']);
+    await navigation.getByRole('button', { name: 'Import review', exact: true }).click();
+    await page.getByRole('button', { name:'Create product & review packaging' }).click();
+    await page.getByLabel('Packaging', { exact:true }).selectOption('trade');
+    await page.getByRole('button', { name:'Create product & import 8 bags' }).click();
+    await expect(page.getByRole('row').filter({hasText:'10.9oz TRADE'}).getByRole('cell')).toHaveText(['200','38','162']);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path:`artifacts/design-planners/${concept}-packaging-mobile-dark.png`,fullPage:true});
+    console.log(`PASS ${concept}: shared catalog, import, planner quantities, packaging,  mapping, validation, calculation, mobile, dark, packing, completion, reset`);
   }
   expect(errors).toEqual([]);
 } finally { await browser?.close(); server.kill(); }
