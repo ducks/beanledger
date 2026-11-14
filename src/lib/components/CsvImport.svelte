@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PackagingChoice from '$lib/components/PackagingChoice.svelte';
+  import { packagingFields } from '$lib/packaging-choice';
   import { onMount } from 'svelte';
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
@@ -29,6 +31,7 @@
     mode: 'create' | 'map';
     cleanName: string;
     lbs: number;
+    packaging: string;
     groupId: string;
     creatingNewGroup: boolean;
     newGroupLabel: string;
@@ -92,6 +95,7 @@
         mode,
         cleanName: suggestedLabel ? `${suggestedLabel} - ${lbs >= 1 ? `${Math.round(lbs * 10) / 10}lb` : `${Math.round(lbs * 16 * 10) / 10}oz`}` : productName,
         lbs: lbs || 0,
+        packaging: '',
         groupId: suggestedGroup?.id || groups[0]?.id || '',
         creatingNewGroup: false,
         newGroupLabel: suggestedLabel,
@@ -105,6 +109,7 @@
 
   async function confirmAddSku(productName: string) {
     const formData = addingSkus[productName];
+    if (formData?.mode === 'create' && !formData.packaging) { error = 'Choose packaging or Untracked / bulk'; return; }
     if (!formData) {
       console.error('No form data for product:', productName);
       return;
@@ -188,6 +193,7 @@
         const newProduct = {
           name: cleanName,
           lbs: formData.lbs,
+          ...packagingFields(formData.packaging),
           group_id: groupId,
           active: true,
           created_at: new Date().toISOString().slice(0, 10)
@@ -620,10 +626,11 @@
                       </label>
                     </div>
 
+                    <PackagingChoice bind:value={formData.packaging}/>
                   {/if}
 
                   <div class="form-actions">
-                    <button type="button" class="btn-confirm" onclick={() => confirmAddSku(match.productName)}>
+                    <button type="button" class="btn-confirm" disabled={formData.mode === 'create' && !formData.packaging} onclick={() => confirmAddSku(match.productName)}>
                       {#if formData.mode === 'map'}
                         Create Alias
                       {:else if formData.creatingNewGroup}

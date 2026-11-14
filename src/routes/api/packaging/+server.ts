@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/db';
+import { handle, paramDate } from '$lib/server/validate';
 import type { PackagingType, UntrackedPackagingRequirement } from '$lib/types';
 
 type PackagingRow = Omit<
@@ -46,135 +47,59 @@ function normalize(row: PackagingRow): PackagingType {
 }
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-  if (!locals.tenant) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const date = url.searchParams.get('date');
-  const dateFrom = url.searchParams.get('dateFrom');
-  const dateTo = url.searchParams.get('dateTo');
-
-  if (date) {
-    const [typesResult, untrackedResult, dayResult] = await Promise.all([
-      query<PackagingRow>(
-        `WITH required AS (
-           SELECT ROUND(p.lbs * 453.59237)::integer AS size_grams,
-                  SUM(o.qty)::integer AS required_count
-           FROM orders o
-           JOIN products p
-             ON p.id = o.product_id AND p.tenant_id = o.tenant_id
-           WHERE o.production_date = $1 AND o.tenant_id = $2
-           GROUP BY ROUND(p.lbs * 453.59237)::integer
-         )
-         SELECT pt.*,
-                COALESCE(r.required_count, 0) AS required_count,
-                pu.starting_count,
-                COALESCE(pu.filled_count, 0) AS filled_count,
-                pu.ending_count
-         FROM packaging_types pt
-         LEFT JOIN required r ON r.size_grams = pt.size_grams
-         LEFT JOIN packaging_usage pu
-           ON pu.packaging_type_id = pt.id
-          AND pu.tenant_id = pt.tenant_id
-          AND pu.production_date = $1
-         WHERE pt.tenant_id = $2
-           AND (pt.active = true OR pu.packaging_type_id IS NOT NULL)
-         ORDER BY pt.size_grams`,
-        [date, locals.tenant.id]
-      ),
-      query<UntrackedPackagingRequirement>(
-        `SELECT required.size_grams, required.required_count
-         FROM (
-           SELECT ROUND(p.lbs * 453.59237)::integer AS size_grams,
-                  SUM(o.qty)::integer AS required_count
-           FROM orders o
-           JOIN products p
-             ON p.id = o.product_id AND p.tenant_id = o.tenant_id
-           WHERE o.production_date = $1 AND o.tenant_id = $2
-           GROUP BY ROUND(p.lbs * 453.59237)::integer
-         ) required
-         WHERE NOT EXISTS (
-           SELECT 1 FROM packaging_types pt
-           WHERE pt.tenant_id = $2
-             AND pt.active = true
-             AND pt.size_grams = required.size_grams
-         )
-         ORDER BY required.size_grams`,
-        [date, locals.tenant.id]
-      ),
-      query<{ status: string }>(
-        `SELECT status FROM production_days
-         WHERE production_date = $1 AND tenant_id = $2`,
-        [date, locals.tenant.id]
-      )
-    ]);
-
+  if (!locals.tenant) return json({ error: 'Unauthorized' }, { status: 401 });
+  const tenantId = locals.tenant.id;
+  return handle('Read packaging', async () => {
+    const date = url.searchParams.get('date');
+    const from = date ?? url.searchParams.get('dateFrom');
+    const to = date ?? url.searchParams.get('dateTo');
+    const includeOrders = Boolean(from || to);
+    const params = [tenantId, from ? paramDate(from, 'dateFrom') : null, to ? paramDate(to, 'dateTo') : null, includeOrders];
+    // Completed-day counts come only from the committed ledger. Current catalog
+    // choices apply to open days, never retroactively to completed production.
+    const result = await query<PackagingRow>(`
+      WITH required AS (
+        SELECT p.packaging_type_id, SUM(o.qty)::integer AS required_count
+        FROM orders o JOIN product_packaging p ON p.product_id = o.product_id AND p.tenant_id = o.tenant_id
+        LEFT JOIN production_days pd ON pd.tenant_id = o.tenant_id AND pd.production_date = o.production_date
+        WHERE o.tenant_id = $1 AND $4 AND ($2::date IS NULL OR o.production_date >= $2)
+          AND ($3::date IS NULL OR o.production_date <= $3)
+          AND pd.status IS DISTINCT FROM 'completed' AND p.packaging_type_id IS NOT NULL
+        GROUP BY p.packaging_type_id
+      ), usage AS (
+        SELECT pu.packaging_type_id, SUM(pu.filled_count)::integer AS filled_count,
+          (ARRAY_AGG(pu.starting_count ORDER BY pu.production_date))[1] AS starting_count,
+          (ARRAY_AGG(pu.ending_count ORDER BY pu.production_date DESC))[1] AS ending_count
+        FROM packaging_usage pu WHERE pu.tenant_id = $1 AND $4
+          AND ($2::date IS NULL OR pu.production_date >= $2) AND ($3::date IS NULL OR pu.production_date <= $3)
+        GROUP BY pu.packaging_type_id
+      ) SELECT pt.*, COALESCE(r.required_count, 0) + COALESCE(u.filled_count, 0) AS required_count,
+          u.starting_count, COALESCE(u.filled_count, 0) AS filled_count, u.ending_count
+        FROM packaging_types pt LEFT JOIN required r ON r.packaging_type_id = pt.id
+        LEFT JOIN usage u ON u.packaging_type_id = pt.id
+        WHERE pt.tenant_id = $1 AND (pt.active OR u.packaging_type_id IS NOT NULL)
+        ORDER BY pt.size_grams`, params);
+    const untracked = includeOrders ? await query<UntrackedPackagingRequirement>(`
+      SELECT p.size_grams, SUM(o.qty)::integer AS required_count
+      FROM orders o JOIN product_packaging p ON p.product_id = o.product_id AND p.tenant_id = o.tenant_id
+      LEFT JOIN production_days pd ON pd.tenant_id = o.tenant_id AND pd.production_date = o.production_date
+      WHERE o.tenant_id = $1 AND $4 AND ($2::date IS NULL OR o.production_date >= $2)
+        AND ($3::date IS NULL OR o.production_date <= $3) AND pd.status IS DISTINCT FROM 'completed'
+        AND p.packaging_type_id IS NULL AND p.packaging_mode <> 'untracked'
+      GROUP BY p.size_grams ORDER BY p.size_grams`, params) : { rows: [] };
+    const day = date ? await query<{status:string}>('SELECT status FROM production_days WHERE tenant_id = $1 AND production_date = $2', [tenantId, date]) : null;
+    const status = date ? day?.rows[0]?.status ?? null : includeOrders ? 'range' : null;
     return json({
-      packaging: typesResult.rows.map(normalize),
-      untracked: untrackedResult.rows.map((row: UntrackedPackagingRequirement) => ({
-        size_grams: Number(row.size_grams),
-        required_count: Number(row.required_count)
-      })),
-      day_status: dayResult.rows[0]?.status ?? null
+      packaging: result.rows.map(row => {
+        const item = normalize(row);
+        // Committed counts have already been deducted from current stock.
+        item.projected_remaining = item.on_hand_count - (Number(row.required_count) - Number(row.filled_count ?? 0));
+        return item;
+      }),
+      untracked: untracked.rows.map(row => ({size_grams:Number(row.size_grams), required_count:Number(row.required_count)})),
+      day_status: status
     });
-  }
-
-  if (dateFrom || dateTo) {
-    const conditions = ['o.tenant_id = $1'];
-    const usageConditions = ['pu.tenant_id = $1'];
-    const params: unknown[] = [locals.tenant.id];
-    if (dateFrom) {
-      params.push(dateFrom);
-      conditions.push(`o.production_date >= $${params.length}`);
-      usageConditions.push(`pu.production_date >= $${params.length}`);
-    }
-    if (dateTo) {
-      params.push(dateTo);
-      conditions.push(`o.production_date <= $${params.length}`);
-      usageConditions.push(`pu.production_date <= $${params.length}`);
-    }
-
-    const result = await query<PackagingRow>(
-      `WITH required AS (
-         SELECT ROUND(p.lbs * 453.59237)::integer AS size_grams,
-                SUM(o.qty)::integer AS required_count
-         FROM orders o
-         JOIN products p
-           ON p.id = o.product_id AND p.tenant_id = o.tenant_id
-         WHERE ${conditions.join(' AND ')}
-         GROUP BY ROUND(p.lbs * 453.59237)::integer
-       ), usage AS (
-         SELECT pu.packaging_type_id,
-                SUM(pu.filled_count)::integer AS filled_count,
-                (ARRAY_AGG(pu.starting_count ORDER BY pu.production_date))[1] AS starting_count,
-                (ARRAY_AGG(pu.ending_count ORDER BY pu.production_date DESC))[1] AS ending_count
-         FROM packaging_usage pu
-         WHERE ${usageConditions.join(' AND ')}
-         GROUP BY pu.packaging_type_id
-       )
-       SELECT pt.*, COALESCE(r.required_count, 0) AS required_count,
-              u.starting_count, COALESCE(u.filled_count, 0) AS filled_count,
-              u.ending_count
-       FROM packaging_types pt
-       LEFT JOIN required r ON r.size_grams = pt.size_grams
-       LEFT JOIN usage u ON u.packaging_type_id = pt.id
-       WHERE pt.tenant_id = $1
-         AND (pt.active = true OR u.packaging_type_id IS NOT NULL)
-       ORDER BY pt.size_grams`,
-      params
-    );
-    return json({ packaging: result.rows.map(normalize), untracked: [], day_status: 'range' });
-  }
-
-  const result = await query<PackagingRow>(
-    `SELECT pt.*, 0 AS required_count, NULL::integer AS starting_count,
-            0 AS filled_count, NULL::integer AS ending_count
-     FROM packaging_types pt
-     WHERE tenant_id = $1 AND active = true
-     ORDER BY size_grams`,
-    [locals.tenant.id]
-  );
-  return json({ packaging: result.rows.map(normalize), untracked: [], day_status: null });
+  });
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {

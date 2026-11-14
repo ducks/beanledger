@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { coffeeWeightReport } from '$lib/coffee-weight-report';
   import { onMount } from 'svelte';
   import type { Order, PackagingType, Product, RoastGroup, UntrackedPackagingRequirement } from '$lib/types';
-  import { calcGroup, formatPackageSize, formatPackageSizeGrams, formatWeight } from '$lib/calc';
+  import { calcGroup, formatPackageSizeGrams, formatWeight } from '$lib/calc';
 
   let {
     orders,
@@ -96,7 +97,6 @@
     }
   }
 
-  const productById = $derived(Object.fromEntries(products.map((p) => [p.id, p])));
 
   // Group orders by production date
   const ordersByDate = $derived.by(() => {
@@ -129,28 +129,7 @@
     roastNeeded.reduce((s, g) => s + g.calc.batchesUp * g.calc.batchWeight, 0)
   );
 
-  // Package sizes
-  const packageSizes = $derived.by(() => {
-    const sizeMap = new Map<number, { size: string; qty: number }>();
-    for (const order of rangeOrders) {
-      const product = productById[order.product_id];
-      if (!product) continue;
-
-      const sizeKey = product.lbs;
-      const sizeLabel = formatPackageSize(product.lbs, units);
-
-      if (!sizeMap.has(sizeKey)) {
-        sizeMap.set(sizeKey, { size: sizeLabel, qty: 0 });
-      }
-      sizeMap.get(sizeKey)!.qty += order.qty;
-    }
-
-    return Array.from(sizeMap.values()).sort((a, b) => {
-      const aLbs = parseFloat(a.size);
-      const bLbs = parseFloat(b.size);
-      return bLbs - aLbs;
-    });
-  });
+  const packageSizes = $derived(coffeeWeightReport(rangeOrders, products, units));
 
 </script>
 
@@ -237,7 +216,8 @@
 
       <!-- Units by Package Size -->
       <div class="section">
-        <div class="section-title">Units by Package Size</div>
+        <div class="section-title">Units by Coffee Weight</div>
+        <p>Grouped by coffee weight. Bag consumption is listed separately under Packaging Inventory.</p>
         <div class="size-grid">
           {#each packageSizes as size}
             <div class="size-card">

@@ -1,4 +1,5 @@
 import type pg from 'pg';
+import { ValidationError } from './validate';
 
 interface ProductionDayRow {
   status: 'active' | 'scheduled' | 'completed';
@@ -11,7 +12,7 @@ interface PackagingTypeRow {
 }
 
 interface RequiredRow {
-  size_grams: number;
+  packaging_type_id: string;
   required_count: number;
 }
 
@@ -40,37 +41,26 @@ export async function commitPackagingUsage(
   tenantId: string,
   productionDate: string
 ): Promise<void> {
-  const [typesResult, requiredResult] = await Promise.all([
-    client.query<PackagingTypeRow>(
-      `SELECT id, size_grams, on_hand_count
-       FROM packaging_types
-       WHERE tenant_id = $1 AND active = true
-       ORDER BY size_grams
-       FOR UPDATE`,
-      [tenantId]
-    ),
-    client.query<RequiredRow>(
-      `SELECT ROUND(p.lbs * 453.59237)::integer AS size_grams,
-              SUM(o.qty)::integer AS required_count
-       FROM orders o
-       JOIN products p
-         ON p.id = o.product_id AND p.tenant_id = o.tenant_id
-       WHERE o.production_date = $1 AND o.tenant_id = $2
-       GROUP BY ROUND(p.lbs * 453.59237)::integer`,
-      [productionDate, tenantId]
-    )
-  ]);
-
-  const requiredBySize = new Map<number, number>(
-    requiredResult.rows.map((row: RequiredRow) => [
-      Number(row.size_grams),
-      Number(row.required_count)
-    ])
-  );
+  // Lock catalog rows so assignment edits cannot interleave with completion.
+  await client.query(`SELECT p.id FROM products p WHERE p.tenant_id = $1
+    AND EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.tenant_id = p.tenant_id AND o.production_date = $2)
+    ORDER BY p.id FOR SHARE`, [tenantId, productionDate]);
+  const typesResult = await client.query<PackagingTypeRow>(
+    'SELECT id, size_grams, on_hand_count FROM packaging_types WHERE tenant_id = $1 AND active = true ORDER BY id FOR UPDATE', [tenantId]);
+  const invalid = await client.query(`SELECT 1 FROM orders o JOIN product_packaging p
+    ON p.product_id = o.product_id AND p.tenant_id = o.tenant_id
+    WHERE o.tenant_id = $1 AND o.production_date = $2 AND p.packaging_mode = 'tracked' AND p.packaging_type_id IS NULL`, [tenantId, productionDate]);
+  if (invalid.rows.length) throw new ValidationError('An ordered product uses archived packaging. Choose available packaging in Catalog before completing this day.');
+  const requiredResult = await client.query<RequiredRow>(
+    `SELECT p.packaging_type_id, SUM(o.qty)::integer AS required_count
+     FROM orders o JOIN product_packaging p ON p.product_id = o.product_id AND p.tenant_id = o.tenant_id
+     WHERE o.production_date = $1 AND o.tenant_id = $2 AND p.packaging_type_id IS NOT NULL
+     GROUP BY p.packaging_type_id`, [productionDate, tenantId]);
+  const requiredById = new Map(requiredResult.rows.map(row => [row.packaging_type_id, Number(row.required_count)]));
 
   for (const packaging of typesResult.rows) {
     const startingCount = Number(packaging.on_hand_count);
-    const filledCount = requiredBySize.get(Number(packaging.size_grams)) ?? 0;
+    const filledCount = requiredById.get(packaging.id) ?? 0;
     const endingCount = startingCount - filledCount;
 
     await client.query(
