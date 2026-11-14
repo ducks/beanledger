@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PackagingChoice from '$lib/components/PackagingChoice.svelte';
+  import { packagingFields } from '$lib/packaging-choice';
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
   import CsvFormatBuilder from './CsvFormatBuilder.svelte';
   import { units } from '$lib/stores/units';
@@ -49,6 +51,8 @@
   // Product form state
   let showProductForm = $state(false);
   let editingProduct = $state<Product | null>(null);
+  let productPackaging = $state('');
+  let productError = $state('');
   let productFormId = $state('');
   let productFormName = $state('');
   let productFormLbs = $state(0);
@@ -320,6 +324,7 @@
 
   function openCreateProductForm() {
     editingProduct = null;
+    productPackaging = ''; productError = '';
     productFormId = '';
     productFormName = '';
     productFormLbs = 0;
@@ -329,6 +334,8 @@
 
   function openEditProductForm(product: Product) {
     editingProduct = product;
+    productPackaging = product.packaging_mode === 'tracked' ? product.packaging_type_id ?? '' : product.packaging_mode ?? 'legacy';
+    productError = '';
     productFormId = product.id;
     productFormName = product.name;
     productFormLbs = product.lbs;
@@ -342,9 +349,12 @@
   }
 
   async function saveProduct() {
+    if (!productPackaging) { productError = 'Choose packaging or Untracked / bulk'; return; }
+    productError = '';
     const productData = {
       id: editingProduct ? productFormId : undefined,
       name: productFormName,
+      ...packagingFields(productPackaging),
       lbs: productFormLbs,
       group_id: productFormGroupId,
       active: editingProduct?.active ?? true,
@@ -352,15 +362,18 @@
     };
 
     const method = editingProduct ? 'PUT' : 'POST';
-    await fetch('/api/products', {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(productData)
-    });
+    try {
+      const response = await fetch('/api/products', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
 
-    await loadData();
-    onUpdate();
-    closeProductForm();
+      if (!response.ok) { productError = (await response.json()).error || 'Could not save product'; return; }
+      await loadData();
+      onUpdate();
+      closeProductForm();
+    } catch { productError = 'Could not save product. Please try again.'; }
   }
   // Alias CRUD
   function openCreateAliasForm() {
@@ -534,7 +547,8 @@
                   />
                 </th>
                 <th>Name</th>
-                <th>Weight</th>
+                <th>Coffee weight</th>
+                <th>Packaging</th>
                 <th>Roast Group</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -552,6 +566,7 @@
                   </td>
                   <td>{product.name}</td>
                   <td>{formatPackageSize(product.lbs, $units)}</td>
+                  <td>{product.packaging_mode === 'tracked' ? `${product.packaging_label ?? 'Selected bag'}${product.packaging_active === false ? ' (archived — reassign)' : ''}` : product.packaging_mode === 'untracked' ? 'Untracked / bulk' : 'Needs review — legacy weight matching'}</td>
                   <td>{groups.find((g) => g.id === product.group_id)?.label || '—'}</td>
                   <td>
                     <button
@@ -923,6 +938,8 @@
           />
         </div>
 
+        <div class="form-group"><PackagingChoice bind:value={productPackaging} allowLegacy={!!editingProduct && (editingProduct.packaging_mode ?? 'legacy') === 'legacy'} currentLabel={editingProduct?.packaging_label ?? ''}/></div>
+        {#if productError}<p role="alert">{productError}</p>{/if}
         <div class="form-group">
           <label>Roast Group</label>
           <select bind:value={productFormGroupId}>
@@ -939,7 +956,7 @@
         <button
           class="save-button"
           onclick={saveProduct}
-          disabled={!productFormName || !productFormLbs || !productFormGroupId}
+          disabled={!productFormName || !productFormLbs || !productFormGroupId || !productPackaging}
         >
           {editingProduct ? 'Update' : 'Create'}
         </button>

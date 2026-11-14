@@ -137,6 +137,73 @@ changes left unrecorded by an earlier failed migration.
 - ✅ **Product Edit UI** - Edit product name, weight, and roast group assignment
 - ✅ **Test Suite** - Vitest with 14 passing tests covering calc.ts business logic
 
+## Browser workflow regression
+
+`tests/e2e/roaster-workflow.spec.ts` drives the real UI through sign-in, batch and
+bag inventory setup, product creation, custom CSV column mapping, an unmatched
+product, importing orders, roast completion, and product archival. It checks
+persisted order quantities and inventory independently through read-only API
+requests. Inventory reversal remains covered by separate API tests. Only initial account
+creation is fixture setup; business records are created through UI interactions.
+
+Run this journey with Docker available:
+
+```sh
+pnpm test:e2e tests/e2e/roaster-workflow.spec.ts
+```
+
+The runner uses disposable PostgreSQL on port 5433 and the app on port 4173;
+it does not touch the local development database on 5432. The existing CI job
+runs it automatically with the rest of the suite on main pushes and pull requests.
+Named steps and five screenshot attachments make failures and visual review easier.
+Failures retain Playwright traces, screenshots, and browser video; CI uploads
+`playwright-report` and `test-results` for seven days. Generated artifacts remain
+outside source control.
+
+To retain video of a successful run for later tutorial exploration:
+
+```sh
+E2E_VIDEO=1 pnpm test:e2e tests/e2e/roaster-workflow.spec.ts
+```
+
+Videos and attachments are in `test-results`. This is fast test footage, not a
+finished tutorial: there is no narration, captioning, or presentation pacing yet.
+Named steps can serve as chapters for a separate recording mode later.
+
+## Product packaging assignments
+
+Migration `016_product_packaging.sql` adds a tenant-scoped product-to-packaging
+foreign key and three modes. Existing products are `legacy`: their whole-gram
+weight matching remains unchanged until reviewed. `tracked` selects one bag
+inventory item per sold unit, independently of coffee weight. `untracked` is an
+explicit bulk/no-bag choice and never falls back to weight matching.
+
+Catalog create/edit, Add New Product, and unmatched CSV product creation expose
+this choice. Catalog labels legacy products “Needs review” and displays selected
+bags, including archived bags that need reassignment. Create packaging inventory
+first when no bags are available. Coffee weights and names are not rewritten.
+
+For API compatibility, POST without either packaging field still creates a
+legacy product; PUT omitting both preserves its existing assignment. New clients
+should send `packaging_mode: "tracked"` with `packaging_type_id`, or
+`packaging_mode: "untracked"` with a null ID. Invalid, inactive, and cross-tenant
+choices return the same client error. The database also enforces tenant ownership.
+
+Projections and completion share the same resolver. Assignment changes apply to
+open orders. Completed-day and date-range consumption use `packaging_usage`, not
+current product assignments. Reopening reverses the original committed usage;
+subsequent completion uses the current assignment. Completion fails if an ordered
+tracked product points to archived packaging. Legacy unmatched products retain
+the previous behavior and are reported as unresolved for open days.
+
+Deployment requires the normal migration before serving the updated application.
+No historical inventory repair or automatic reassignment is performed. Existing
+untracked/missing-bag details were not snapshotted, so completed reports cannot
+reconstruct them reliably; the recorded consumption remains authoritative. Bag
+labels remain current catalog labels, and historical coffee-weight calculations
+still depend on product data. The existing one-packaging-type-per-gram constraint
+and packaging creation/upsert behavior are unchanged in this iteration.
+
 ## TODO
 
 ### Core Features

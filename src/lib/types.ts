@@ -19,6 +19,10 @@ export interface RoastGroup {
 }
 
 export interface Product {
+  packaging_mode?: 'legacy' | 'tracked' | 'untracked';
+  packaging_type_id?: string | null;
+  packaging_label?: string | null;
+  packaging_active?: boolean | null;
   id: string;
   name: string;
   lbs: number;

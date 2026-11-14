@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { packagingChoice } from '$lib/server/product-packaging';
 import { query, withTransaction } from '$lib/db';
 import { newId, today } from '$lib/server/ids';
 import {
@@ -11,7 +12,7 @@ import type { Product } from '$lib/types';
 export const GET: RequestHandler = async ({ locals }) => {
   if (!locals.tenant) return json({ error: 'Unauthorized' }, { status: 401 });
   const result = await query<Product>(
-    'SELECT * FROM products WHERE tenant_id = $1 ORDER BY created_at DESC',
+    `SELECT p.*, pt.label AS packaging_label, pt.active AS packaging_active FROM products p LEFT JOIN packaging_types pt ON pt.id = p.packaging_type_id AND pt.tenant_id = p.tenant_id WHERE p.tenant_id = $1 ORDER BY p.created_at DESC`,
     [locals.tenant.id]
   );
   return json(result.rows);
@@ -27,13 +28,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const tenantId = locals.tenant.id;
   return handle('Create product', async () => {
     const body = await readBody(request);
+    const choice = await packagingChoice(body, tenantId);
     const groupId = requireId(body, 'group_id');
     if (!(await groupExists(groupId, tenantId))) {
       return json({ error: 'group_id does not name one of your roast groups' }, { status: 400 });
     }
     const result = await query(
-      `INSERT INTO products (id, name, lbs, group_id, active, created_at, tenant_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO products (id, name, lbs, group_id, active, created_at, tenant_id, packaging_mode, packaging_type_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         optionalId(body) ?? newId('prod'),
@@ -42,7 +44,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         groupId,
         optionalBoolean(body, 'active', true),
         optionalDate(body, 'created_at') ?? today(),
-        tenantId
+        tenantId,
+        choice?.mode ?? 'legacy', choice?.id ?? null
       ]
     );
     return json(result.rows[0], { status: 201 });
@@ -54,13 +57,15 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
   const tenantId = locals.tenant.id;
   return handle('Update product', async () => {
     const body = await readBody(request);
+    const choice = await packagingChoice(body, tenantId);
     const groupId = requireId(body, 'group_id');
     if (!(await groupExists(groupId, tenantId))) {
       return json({ error: 'group_id does not name one of your roast groups' }, { status: 400 });
     }
     const result = await query(
       `UPDATE products
-       SET name = $2, lbs = $3, group_id = $4, active = $5, updated_at = CURRENT_TIMESTAMP
+       SET name = $2, lbs = $3, group_id = $4, active = $5, packaging_mode = COALESCE($7, packaging_mode),
+           packaging_type_id = CASE WHEN $7::text IS NULL THEN packaging_type_id ELSE $8::uuid END, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND tenant_id = $6
        RETURNING *`,
       [
@@ -69,7 +74,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
         requireNumber(body, 'lbs', { min: 0.001, max: 1000 }),
         groupId,
         optionalBoolean(body, 'active', true),
-        tenantId
+        tenantId, choice?.mode ?? null, choice?.id ?? null
       ]
     );
     if (!result.rows[0]) return json({ error: 'Product not found' }, { status: 404 });

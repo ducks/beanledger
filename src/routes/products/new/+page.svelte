@@ -1,10 +1,13 @@
 <script lang="ts">
+  import PackagingChoice from '$lib/components/PackagingChoice.svelte';
+  import { packagingFields } from '$lib/packaging-choice';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import type { RoastGroup } from '$lib/types';
   import { units } from '$lib/stores/units';
   import { parseWeight, unitLabel } from '$lib/calc';
 
+  let packaging = $state('');
   let groups = $state<RoastGroup[]>([]);
   let loading = $state(false);
   let error = $state('');
@@ -23,6 +26,7 @@
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
+    if (!packaging) { error = 'Choose packaging or Untracked / bulk'; return; }
     loading = true;
     error = '';
     success = false;
@@ -33,6 +37,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
+          ...packagingFields(packaging),
           lbs: parseWeight(form.lbs, $units),
           group_id: form.group_id,
           active: true,
@@ -50,6 +55,7 @@
 
       // Reset form
       form = { name: '', lbs: '', group_id: '' };
+      packaging = '';
 
       // Redirect after short delay
       setTimeout(() => goto('/'), 1500);
@@ -123,8 +129,9 @@
       </select>
     </div>
 
+    <div class="form-group"><PackagingChoice bind:value={packaging}/></div>
     <div class="form-actions">
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading || !packaging}>
         {loading ? 'Creating...' : 'Create Product'}
       </button>
       <a href="/" class="cancel-button">Cancel</a>
