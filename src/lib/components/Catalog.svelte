@@ -2,6 +2,7 @@
   import PackagingChoice from '$lib/components/PackagingChoice.svelte';
   import { packagingFields } from '$lib/packaging-choice';
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
+  import DuplicateReview from './DuplicateReview.svelte';
   import CsvFormatBuilder from './CsvFormatBuilder.svelte';
   import { units } from '$lib/stores/units';
   import { formatPackageSize, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
@@ -14,7 +15,7 @@
     onUpdate: () => void;
   } = $props();
 
-  let tab = $state<'products' | 'groups' | 'aliases' | 'formats'>('products');
+  let tab = $state<'products' | 'groups' | 'aliases' | 'formats' | 'duplicates'>('products');
   let archived = $state(false);
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
@@ -476,6 +477,7 @@
     </div>
 
     <div class="tabs">
+      <button class="tab" class:active={tab === 'duplicates'} onclick={() => tab = 'duplicates'}>Review duplicates</button>
       <button
         class="tab"
         class:active={tab === 'products'}
@@ -516,6 +518,8 @@
       {/if}
       {#if loading}
         <div class="loading">Loading...</div>
+      {:else if tab === 'duplicates'}
+        <DuplicateReview {products} onEdit={openEditProductForm} onArchive={archiveProduct}/>
       {:else if tab === 'products'}
         <div class="section-header">
           <div class="section-title">Products</div>

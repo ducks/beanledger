@@ -118,14 +118,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const result = await query<PackagingType>(
     `INSERT INTO packaging_types (label, size_grams, on_hand_count, tenant_id)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (tenant_id, size_grams) DO UPDATE
-       SET label = EXCLUDED.label,
-           on_hand_count = EXCLUDED.on_hand_count,
-           active = true,
-           updated_at = CURRENT_TIMESTAMP
+     ON CONFLICT (tenant_id, size_grams) DO NOTHING
      RETURNING *`,
     [label, sizeGrams, onHandCount, locals.tenant.id]
   );
+  if (!result.rows[0]) {
+    return json({ error: 'This packaging size already exists, possibly archived. Its label and stock count have not changed. Review the existing inventory before adding another bag.' }, { status: 409 });
+  }
   return json(normalize(result.rows[0] as PackagingRow), { status: 201 });
 };
 

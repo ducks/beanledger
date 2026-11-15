@@ -1,0 +1,34 @@
+import {test,expect,TEST_USER,signupTenant} from './fixtures';
+
+test('duplicate entries return a reviewable conflict and never overwrite stock',async({page,baseURL})=>{
+ const api=page.request;
+ await api.post('/api/auth/login',{data:TEST_USER});
+ await api.post('/api/batch-overrides',{data:{batch_type:'standard',weight_lbs:20}});
+ const g=await(await api.post('/api/groups',{data:{label:'House',batch_type:'standard',roast_loss_pct:15,type:'single_origin'}})).json();
+ const create={name:'House Blend',lbs:.68,group_id:g.id};
+ const first=await(await api.post('/api/products',{data:create})).json();
+ const duplicate=await api.post('/api/products',{data:{...create,name:' house   BLEND '}});
+ expect(duplicate.status()).toBe(409);
+ expect((await duplicate.json()).matches[0].id).toBe(first.id);
+ const second=await(await api.post('/api/products',{data:{...create,name:'Decaf',lbs:.68125}})).json();
+ expect((await api.put('/api/products',{data:{...second,name:'HOUSE BLEND'}})).status()).toBe(409);
+ await api.delete(`/api/products?id=${first.id}`);
+ expect((await api.post('/api/products',{data:create})).status()).toBe(409);
+ const bag=await(await api.post('/api/packaging',{data:{label:'Original',size_value:309,size_unit:'g',on_hand_count:100}})).json();
+ expect((await api.post('/api/packaging',{data:{label:'Overwrite',size_value:10.9,size_unit:'oz',on_hand_count:0}})).status()).toBe(409);
+ const inventory=await(await api.get('/api/packaging')).json();
+ expect(inventory.packaging[0]).toMatchObject({id:bag.id,label:'Original',on_hand_count:100});
+ await page.goto('/');await page.waitForLoadState('networkidle');
+ await page.getByRole('button',{name:/Catalog/}).click();
+ await page.getByRole('button',{name:'Review duplicates',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Nearby coffee weights'})).toBeVisible();
+ await expect(page.getByText('No matching product names found.')).toBeVisible();
+ await page.locator('summary').click();
+ await expect(page.getByRole('region',{name:'Duplicate review'})).toContainText('House Blend');
+ await expect(page.getByRole('region',{name:'Duplicate review'})).toContainText('Decaf');
+ const other=await signupTenant(baseURL!,'separate-catalog');
+ await other.post('/api/batch-overrides',{data:{batch_type:'standard',weight_lbs:20}});
+ const og=await(await other.post('/api/groups',{data:{label:'Other',batch_type:'standard',roast_loss_pct:15,type:'single_origin'}})).json();
+ expect((await other.post('/api/products',{data:{...create,group_id:og.id}})).status()).toBe(201);
+ await other.dispose();
+});
