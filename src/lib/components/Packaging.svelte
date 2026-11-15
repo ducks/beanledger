@@ -22,6 +22,7 @@
   let count = $state<number | undefined>(undefined);
   let draftCounts = $state<Record<string, number>>({});
 
+  const nearbySizes = $derived(capacity && capacity > 0 ? packaging.filter(p => Math.abs(p.size_grams - Math.round((capacity ?? 0) * ($units === 'kg' ? 1 : 28.349523125))) <= 2) : []);
   onMount(loadPackaging);
 
   async function loadPackaging() {
@@ -149,6 +150,9 @@
           Add bag type
         </button>
       </form>
+      {#if nearbySizes.length}
+        <p role="status">Similar packaging already exists: {nearbySizes.map(p => `${p.label} (${p.size_grams} g)`).join(', ')}. Check whether you need a different bag. The same whole-gram size cannot be added twice; use the existing stock editor to change inventory.</p>
+      {/if}
 
       {#if untracked.length > 0}
         <div class="warning">

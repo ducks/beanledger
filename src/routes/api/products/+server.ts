@@ -1,3 +1,4 @@
+import { matchingProductNames } from '$lib/server/catalog-duplicates';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { packagingChoice } from '$lib/server/product-packaging';
@@ -28,6 +29,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const tenantId = locals.tenant.id;
   return handle('Create product', async () => {
     const body = await readBody(request);
+    const name = requireString(body, 'name');
+    const matches = await matchingProductNames(tenantId, name);
+    if (matches.length) return json({error:'A product with this name already exists. Use it, restore it if archived, or choose a distinct name.', matches}, {status:409});
     const choice = await packagingChoice(body, tenantId);
     const groupId = requireId(body, 'group_id');
     if (!(await groupExists(groupId, tenantId))) {
@@ -39,7 +43,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
        RETURNING *`,
       [
         optionalId(body) ?? newId('prod'),
-        requireString(body, 'name'),
+        name,
         requireNumber(body, 'lbs', { min: 0.001, max: 1000 }),
         groupId,
         optionalBoolean(body, 'active', true),
@@ -61,6 +65,14 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     const groupId = requireId(body, 'group_id');
     if (!(await groupExists(groupId, tenantId))) {
       return json({ error: 'group_id does not name one of your roast groups' }, { status: 400 });
+    }
+    const id = requireId(body);
+    const name = requireString(body, 'name');
+    const current = await query<{name:string}>('SELECT name FROM products WHERE id=$1 AND tenant_id=$2', [id, tenantId]);
+    if (!current.rows.length) return json({error:'Product not found'}, {status:404});
+    if (name !== current.rows[0].name) {
+      const matches = await matchingProductNames(tenantId, name, id);
+      if (matches.length) return json({error:'A product with this name already exists. Choose a distinct name.', matches}, {status:409});
     }
     const result = await query(
       `UPDATE products

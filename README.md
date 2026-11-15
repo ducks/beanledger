@@ -137,6 +137,25 @@ changes left unrecorded by an earlier failed migration.
 - ✅ **Product Edit UI** - Edit product name, weight, and roast group assignment
 - ✅ **Test Suite** - Vitest with 14 passing tests covering calc.ts business logic
 
+## Duplicate review
+
+Catalog → Review duplicates lists matching product names (case, whitespace, and
+Unicode compatibility normalized) separately from nearby coffee weights within
+2 g. Archived products are included. Review/edit and archive actions preserve
+orders; there is no automatic merge, alias redirection, or weight correction.
+New products and changed names return a 409 conflict for an existing normalized
+name in the same tenant. Existing duplicate records remain editable without
+changing their name, so they can still be reviewed and archived.
+
+Packaging entry warns about nearby sizes. Creating an existing whole-gram size
+returns 409 instead of overwriting its label, stock, or archived status. Inventory
+corrections still use the existing stock editor. These are review candidates, not
+proof that different coffees or bags are interchangeable. This first iteration
+does not implement product merging, historical normalization, or an archived-bag
+restoration UI. Name checking is application-level; the existing database exact
+name constraint remains, but case/whitespace variants created concurrently are
+not yet constrained at database level and remain visible in review.
+
 ## Browser workflow regression
 
 `tests/e2e/roaster-workflow.spec.ts` drives the real UI through sign-in, batch and
@@ -202,7 +221,7 @@ untracked/missing-bag details were not snapshotted, so completed reports cannot
 reconstruct them reliably; the recorded consumption remains authoritative. Bag
 labels remain current catalog labels, and historical coffee-weight calculations
 still depend on product data. The existing one-packaging-type-per-gram constraint
-and packaging creation/upsert behavior are unchanged in this iteration.
+is unchanged. Packaging creation returns a conflict for existing sizes rather than replacing labels or stock counts.
 
 ## TODO
 
