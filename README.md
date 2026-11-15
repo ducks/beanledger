@@ -54,7 +54,11 @@ links sent by email, so the server needs a mail transport:
 | Variable | Meaning |
 |---|---|
 | `MAIL_TRANSPORT` | `smtp` is required in production. In development, `console` (default, logs the message) and `file` (append to `MAIL_OUTBOX`; used by tests) are also available. |
-| `SMTP_URL` | e.g. `smtps://user:pass@smtp.example.com:465` when `MAIL_TRANSPORT=smtp` |
+| `SMTP_HOST` | SMTP hostname, without a URL scheme (e.g. `smtp.mailgun.org`; use the hostname for your Mailgun region). |
+| `SMTP_PORT` | `587` for required STARTTLS or `465` for implicit TLS. Other ports also require STARTTLS. |
+| `SMTP_USER` | SMTP login supplied by your mail provider. |
+| `SMTP_PASSWORD` | SMTP password, supplied as-is without URL encoding. |
+| `SMTP_URL` | Legacy alternative to the four separate fields; do not configure both. e.g. `smtps://user:pass@smtp.example.com:465` when `MAIL_TRANSPORT=smtp` |
 | `MAIL_FROM` | sender address for SMTP |
 | `ORIGIN` | public HTTPS origin used in emailed links; required in production, with no path, query, or credentials |
 | `ADDRESS_HEADER` | the client-address header provided by a trusted reverse proxy, if used |
@@ -258,3 +262,27 @@ is unchanged. Packaging creation returns a conflict for existing sizes rather th
 ## License
 
 MIT
+
+### SMTP configuration example
+
+Install these settings in the server's private environment file, alongside the
+existing application settings. Do not commit credentials to Git. Use your mail
+provider's SMTP credentials, not its API key.
+
+```dotenv
+MAIL_TRANSPORT=smtp
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=postmaster@mg.beanledger.coffee
+SMTP_PASSWORD="replace-with-private-smtp-password"
+MAIL_FROM="BeanLedger <hello@mg.beanledger.coffee>"
+ORIGIN=https://beanledger.coffee
+```
+
+All four separate SMTP fields are required together. Remove `SMTP_URL` when
+switching to them. Passwords are passed directly to Nodemailer; quote/escape them
+as required by your environment-file loader, not as a URL. Port 465 uses implicit
+TLS; other ports require STARTTLS and fail if the server cannot upgrade. Existing
+`SMTP_URL` deployments keep their current behavior. Local `console` and `file`
+transports are unchanged. This configures delivery only; creating provider
+credentials and verifying a sender domain remain operator setup tasks.
