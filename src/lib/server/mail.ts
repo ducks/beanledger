@@ -2,11 +2,11 @@
  * Outbound email. The transport is chosen by MAIL_TRANSPORT:
  *   console  (development default) print the message to the server log
  *   file     append JSON lines to MAIL_OUTBOX; used by the e2e suite
- *   smtp     send through SMTP_URL (nodemailer) from MAIL_FROM
+ *   smtp     send through separate SMTP settings or SMTP_URL (nodemailer) from MAIL_FROM
  */
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
-import { resolveLinkBase, resolveMailTransport } from './mail-config';
+import { resolveLinkBase, resolveMailTransport, resolveSmtpConfig } from './mail-config';
 import fs from 'fs';
 
 export interface Mail {
@@ -24,7 +24,7 @@ export async function sendMail(mail: Mail): Promise<void> {
   }
   if (transport === 'smtp') {
     const { default: nodemailer } = await import('nodemailer');
-    const transporter = nodemailer.createTransport(env.SMTP_URL!);
+    const transporter = nodemailer.createTransport(resolveSmtpConfig(env));
     await transporter.sendMail({ from: env.MAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text });
     return;
   }
