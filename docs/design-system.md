@@ -25,8 +25,8 @@ published by building or testing locally.
 
 ## Three starting directions
 
-- **Service station:** petrol, enamel cream, red; playful Bricolage Grotesque.
-- **Modernist office:** warm white, charcoal, vermilion; geometric Space Grotesk.
+- **Service station:** burgundy, porcelain cream, turquoise; playful Bricolage Grotesque.
+- **Modernist office:** cool gray, ink blue, signal yellow; geometric Space Grotesk.
 - **Soft vintage:** cocoa, butter, coral; soft Fraunces.
 
 Presets are conversation starters, not final identities. The preview pairs the wordmark with a generated coffee-bean bookkeeper mascot.
@@ -39,7 +39,7 @@ commercial font is included or replicated.
 ## Controls and sharing
 
 Change palette, light/dark mode, wordmark font, interface font, heading-font use,
-and corner shape independently. Presets change palette, wordmark,
+mascot, and corner shape independently. Presets change palette, wordmark,
 and corners, while preserving interface font and light/dark choice.
 Appearance choices are encoded in the URL; use **Copy appearance link** to share.
 Reload restores appearance choices but resets synthetic planner state.
@@ -88,3 +88,8 @@ sample edits, URL round trips, malformed query parameters, valid/invalid local
 font files, dialog dismissal and returned focus, mobile/tablet overflow, light
 and dark themes, old preview links, and absence of API/third-party requests.
 These checks do not certify accessibility or typography across all combinations.
+
+The Mascot selector switches both preview sizes between the coffee bean and
+clipboard characters. Shared URLs preserve this choice; older links default to
+the coffee bean. Both generated transparent PNG concepts live under
+`src/lib/design-system/assets/`.
