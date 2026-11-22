@@ -1,86 +1,95 @@
-# BeanLedger design system — working proposal
+# BeanLedger appearance lab
 
-Review locally at `/design-system` under `pnpm dev`. The previews are available in production builds as well as development. All examples are synthetic; controls demonstrate feedback and do
-not create or change business records. The reference pages are intended for `main`.
+The team is broadly comfortable with the current workflow. This exploration is
+about visual identity: typography, colors, and UI styling. It replaces the
+alternate-flow gallery with one current-layout sample.
 
-## Product direction
+## Review
 
-A calm, approachable workspace for a small roasting team. Daily work should be
-obvious without making dense operational data harder to scan. Warmth should
-come from language, hierarchy, spacing, and helpful states as well as color.
-Keep the current logo unchanged; final typography and wordmark are open decisions.
-The system-font stack in the workshop is a placeholder, not a brand decision.
+Build with `node scripts/build-design-preview.js`, then test with
+`node scripts/test-design-preview.js`. No database, authentication, or app server
+is needed. The test starts a temporary server on port 5181 and saves screenshots
+under ignored `artifacts/appearance/`.
 
-## Information architecture to validate
+To keep a local preview running after the tests:
 
-Make Roast days, Catalog, Packaging, Reports, and Settings stable destinations.
-Keep primary navigation visible on desktop and compact but accessible on mobile.
-The current catalog/settings modals would become pages; dialogs would be reserved
-for short tasks and confirmations. This is a proposal, not a routing change.
+```sh
+python3 -m http.server 5182 --bind 127.0.0.1 --directory artifacts/preview-site
+```
 
-The roast-day workspace should make the sequence visible: import orders, review
-products and quantities, review roast batches, pack, then complete the day.
-Custom CSV mapping needs a guided flow with a preview and validation before
-import. Reuse the same action hierarchy throughout that flow.
+Open http://127.0.0.1:5182/beanledger/design-system/.
+The existing manual **Publish design explorations** workflow can publish this to
+https://ducks.github.io/beanledger/design-system/ once merged. It only replaces
+that directory on gh-pages, preserving the screenshot gallery. Nothing is
+published by building or testing locally.
 
-## Foundations and component contract
+## Three starting directions
 
-- Use semantic surface, text, border, action, and status tokens. Both themes must
-  communicate the same hierarchy; never rely on color alone for status.
-- Use a 4 px spacing scale. Group related inputs closely and separate tasks with
-  larger gaps. Compact table rows and comfortable forms can coexist.
-- Use a restrained heading scale; tabular numerals for quantities and totals.
-  Keep units visible. Right-align numeric columns and left-align names.
-- Controls have a minimum 44 px height and visible keyboard focus. Every input
-  needs a label; helper/error text must be programmatically associated with it.
-- One primary action per task. Secondary actions use quiet surfaces. Destructive
-  actions are separated and explain consequences before confirmation.
-- Buttons, inputs, badges, cards, navigation, tables, dialogs, and notifications
-  need shared contracts. The first reusable Button and scoped token sheet live
-  in `src/lib/design-system`; remaining workshop patterns are examples pending
-  review rather than prematurely abstracted components.
+- **Service station:** burgundy, porcelain cream, turquoise; playful Bricolage Grotesque.
+- **Modernist office:** cool gray, ink blue, signal yellow; geometric Space Grotesk.
+- **Soft vintage:** cocoa, butter, coral; soft Fraunces.
 
-## States and behavior
+Presets are conversation starters, not final identities. The preview pairs the wordmark with a generated coffee-bean bookkeeper mascot.
+The transparent PNG is stored in `src/lib/design-system/assets/bean-bookkeeper.png`
+and shown at specimen and header sizes. It is concept artwork, not a vector master.
+Typography specimens are typeset in the named fonts, not custom-designed fonts.
+The user references are Ocsquid by alpercakici and Rolla by HipFonts; neither
+commercial font is included or replicated.
 
-Every data view needs loading, empty, populated, failed, and retry states.
-Do not show a failed fetch as an empty account. Preserve edits after validation
-or network failure. Disable duplicate submits and announce successful actions.
-Dialogs must manage focus, support Escape where safe, label their purpose, and
-return focus to the trigger. Prototype dialogs are not implemented yet.
+## Controls and sharing
 
-## Adoption and review
+Change palette, light/dark mode, wordmark font, interface font, heading-font use,
+mascot, and corner shape independently. Presets change palette, wordmark,
+and corners, while preserving interface font and light/dark choice.
+Appearance choices are encoded in the URL; use **Copy appearance link** to share.
+Reload restores appearance choices but resets synthetic planner state.
 
-1. Review the workshop in both themes and at phone/tablet/desktop widths.
-2. Choose typography and brand treatment separately.
-3. Validate the navigation and roast-day workflow before changing routes.
-4. Extract agreed patterns into accessible components and replace one complete
-   workflow at a time. Keep domain logic and API behavior unchanged.
-5. Capture populated/empty/error screens, keyboard-test each workflow, measure
-   contrast, and run existing workflow tests before merging.
+The local font picker accepts TTF, OTF, WOFF, or WOFF2 up to 8 MB. It loads the
+font from an ArrayBuffer into the browser FontFace API: no upload, persistence,
+API call, or external font CDN. Local font selections fall back to System sans
+in shared URLs; recipients must load their own font file. Reload removes it.
+Only one local font is loaded at a time and replaced fonts are released.
 
-This is an exploratory foundation, not an accessibility certification or a
-finished redesign. The earlier warmer dashboard remains on this spike branch;
-the workshop does not apply its scoped tokens to that dashboard yet.
+## Scope and fidelity
 
-## Standalone GitHub Pages preview
+`CurrentFlowPreview.svelte` is a presentation-only recreation of the existing
+`RoastPlanner.svelte` hierarchy: account header, planner toolbar, CSV import,
+import history, manual-product/sort controls, and roast-group cards. Catalog,
+reports, packaging, and settings remain dialogs rather than new destinations.
+The preview reuses the application's `calcGroup` and `formatWeight` functions.
 
-The interactive gallery is published at
-https://ducks.github.io/beanledger/design-system/ independently of the live app.
-Build it with `node scripts/build-design-preview.js`; generated files stay under
-ignored `artifacts/`. This uses the same Svelte source components but omits the
-app layout, authentication, database, and server routes. The Pages base path is
-explicitly configured for this repository. To republish, run the manual
-**Publish design explorations** GitHub Actions workflow from main. It replaces
-only `gh-pages/design-system`, preserving the existing screenshot gallery.
+This is not the production application or a full workflow test. Prepared sample
+orders replace uploads; catalog and packaging tables are read-only; account and
+destructive actions explain that they are unavailable. Quantity/leftover/batch
+edits and completion affect only the synthetic sample. This avoids database
+writes and keeps branding review separate from domain changes. Review the final
+chosen style on real application components before adopting it.
 
-Each concept includes an interactive roast planner: a synthetic CSV mapping
-exercise, editable order quantities, batch size and carryover inputs, packing
-shortage resolution, and a completion summary. Calculations reuse `calcGroup`
-from the application; no API or persistence is involved. The mapping exercise
-uses a fixed sample rather than uploading a file. These are design experiments,
-not a commitment to the current demo's blocking rules or workflow steps.
+Production components and routes are unchanged. The former concept URLs now
+lead to the lab. Earlier demo components remain in source history/the checkout
+but are no longer published as alternative workflows.
 
-After building, run `node scripts/test-design-preview.js` to exercise all four
-flows, including mobile layouts and dark mode. Preview screenshots stay in
-ignored `artifacts/design-planners/`. The publishing workflow runs these checks
-before updating the gallery.
+## Fonts
+
+Self-hosted variable TTFs from the official Google Fonts repository, downloaded
+2026-11-21. Every family includes its SIL Open Font License under
+`src/lib/design-system/fonts/`:
+
+- Bricolage Grotesque: https://github.com/google/fonts/tree/main/ofl/bricolagegrotesque
+- Fraunces: https://github.com/google/fonts/tree/main/ofl/fraunces
+- Space Grotesk: https://github.com/google/fonts/tree/main/ofl/spacegrotesk
+
+No new runtime dependencies. Fonts are bundled by Vite with content hashes.
+
+## Validation
+
+Automated browser checks cover presets, independent selections, preservation of
+sample edits, URL round trips, malformed query parameters, valid/invalid local
+font files, dialog dismissal and returned focus, mobile/tablet overflow, light
+and dark themes, old preview links, and absence of API/third-party requests.
+These checks do not certify accessibility or typography across all combinations.
+
+The Mascot selector switches both preview sizes between the coffee bean and
+clipboard characters. Shared URLs preserve this choice; older links default to
+the coffee bean. Both generated transparent PNG concepts live under
+`src/lib/design-system/assets/`.
