@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CsvFormat } from '$lib/types';
-  import { parseWithConfig } from '$lib/csv/formats/generic';
+  import { parseWithConfigDetails } from '$lib/csv/formats/generic';
+  import { parseNameRulesText } from '$lib/csv/formats/name-rules';
   import { parseCsv } from '$lib/csv/formats/types';
 
   let {
@@ -28,6 +29,12 @@
   );
   let quantityColumn = $state(editing?.config.quantityColumn ?? '');
   let aggregate = $state(editing?.config.aggregate ?? false);
+
+  let rulesText = $state((editing?.config.nameCleanupRules ?? []).map(rule => JSON.stringify(rule)).join('\n'));
+  const rules = $derived.by(() => {
+    try { return { values: parseNameRulesText(rulesText), error: '' }; }
+    catch (err) { return { values: [], error: err instanceof Error ? err.message : 'Invalid rule' }; }
+  });
 
   let sampleCsv = $state('');
   let sampleFilename = $state('');
@@ -60,12 +67,14 @@
   // Live preview of the canonical output
   const preview = $derived.by(() => {
     if (!sampleCsv.trim() || !productNameSpec || !quantityColumn) return null;
+    if (rules.error) return { error: rules.error };
     try {
-      return parseWithConfig(sampleCsv, {
+      return parseWithConfigDetails(sampleCsv, {
         productNameColumn: productNameSpec,
         quantityColumn,
-        aggregate
-      }).slice(0, 10);
+        aggregate,
+        nameCleanupRules: rules.values
+      });
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Parse error' };
     }
@@ -129,6 +138,10 @@
       return;
     }
 
+    if (rules.error || (preview && 'error' in preview)) {
+      error = rules.error || (preview && 'error' in preview ? preview.error : '');
+      return;
+    }
     saving = true;
     error = '';
 
@@ -139,7 +152,8 @@
       config: {
         productNameColumn: productNameSpec,
         quantityColumn,
-        aggregate
+        aggregate,
+        nameCleanupRules: rules.values
       },
       active: editing?.active ?? true
     };
@@ -301,16 +315,42 @@
         </div>
       {/if}
 
+      <div class="form-group">
+        <label for="fmt-name-rules">Name cleanup rules (optional)</label>
+        <textarea id="fmt-name-rules" bind:value={rulesText} rows="4"
+          aria-describedby="rules-help" aria-invalid={!!rules.error}
+          placeholder={'"Grind: Whole Bean"\n"appstle-selected-selling-plan: {number}"'}></textarea>
+        <p id="rules-help" class="rules-help">
+          One double-quoted removal pattern per line. Text is case-sensitive and spaces match exactly.
+          {'{number}'} matches a whole sequence of digits, not a decimal.
+          Rules run in order, before grouping and product matching. Quantities stay unchanged.
+          Remove a line to stop applying that rule on future imports.
+        </p>
+        {#if rules.error}<p class="preview-error" role="alert">{rules.error}</p>{/if}
+      </div>
+
       {#if preview}
         <div class="preview-section">
           <div class="preview-label">Preview</div>
           {#if 'error' in preview}
             <div class="preview-error">{preview.error}</div>
-          {:else if preview.length === 0}
+          {:else if preview.rows.length === 0}
             <div class="preview-empty">No rows parsed. Check your column selection.</div>
           {:else}
+            {#if rules.values.length > 0}
+              <div class="cleanup-preview">
+                <table>
+                  <caption>Before and after cleanup (first 10 valid records, before grouping)</caption>
+                  <thead><tr><th scope="col">Original name</th><th scope="col">Cleaned name</th><th scope="col">Qty</th></tr></thead>
+                  <tbody>{#each preview.names.slice(0, 10) as row}
+                    <tr><td>{row.original}</td><td>{row.cleaned}</td><td>{row.quantity}</td></tr>
+                  {/each}</tbody>
+                </table>
+              </div>
+            {/if}
+            <p class="rules-help">Import output (first 10). Identical cleaned names combine only when aggregation is enabled.</p>
             <div class="preview-list">
-              {#each preview as row}
+              {#each preview.rows.slice(0, 10) as row}
                 <div class="preview-row">
                   <span class="preview-name">{row.productName}</span>
                   <span class="preview-qty">× {row.quantity}</span>
@@ -331,7 +371,7 @@
       <button
         class="save-button"
         onclick={save}
-        disabled={saving || !name || !productNameSpec || !quantityColumn}
+        disabled={saving || !name || !productNameSpec || !quantityColumn || !!rules.error || !!(preview && 'error' in preview)}
       >
         {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
       </button>
@@ -340,6 +380,12 @@
 </div>
 
 <style>
+  .rules-help { font-size: 12px; line-height: 1.6; color: var(--text-muted); }
+  .cleanup-preview { overflow-x: auto; }
+  .cleanup-preview table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cleanup-preview caption { text-align: left; margin-block: 8px; }
+  .cleanup-preview th, .cleanup-preview td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+
   .modal-backdrop {
     position: fixed;
     inset: 0;

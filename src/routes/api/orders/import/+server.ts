@@ -2,7 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query, withTransaction } from '$lib/db';
 import { parseOrderCsv, matchProducts } from '$lib/csv';
-import { parseWithConfig } from '$lib/csv/formats/generic';
+import { parseWithConfigDetails, type NameChange } from '$lib/csv/formats/generic';
+import { NameRuleError } from '$lib/csv/formats/name-rules';
 import { newId } from '$lib/server/ids';
 import { handle, readBody, requireString, requireDate, optionalId, optionalString, ValidationError } from '$lib/server/validate';
 import type { Product, ImportAlias, CsvFormat } from '$lib/types';
@@ -32,13 +33,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         : {};
 
     let csvRows;
+    let nameChanges: NameChange[] = [];
     if (formatId) {
       const formatResult = await query<CsvFormat>(
         'SELECT config FROM csv_formats WHERE id = $1 AND tenant_id = $2 AND active = true',
         [formatId, tenantId]
       );
       if (formatResult.rows.length === 0) throw new ValidationError(`CSV format not found: ${formatId}`);
-      csvRows = parseWithConfig(csvText, formatResult.rows[0].config);
+      try {
+        const parsed = parseWithConfigDetails(csvText, formatResult.rows[0].config);
+        csvRows = parsed.rows;
+        nameChanges = parsed.names.filter(row => row.original !== row.cleaned);
+      } catch (err) {
+        if (err instanceof NameRuleError) throw new ValidationError(err.message);
+        throw err;
+      }
     } else {
       // Legacy auto-detect, kept until every tenant has a saved format.
       csvRows = parseOrderCsv(csvText);
@@ -59,7 +68,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const unmatched = matches.filter((m) => m.confidence === 'none').length;
     if (body.confirm !== true) {
-      return json({ matches, unmatched, total: matches.length });
+      return json({ matches, unmatched, total: matches.length, nameChanges });
     }
 
     const { importId, created } = await withTransaction(async (client) => {

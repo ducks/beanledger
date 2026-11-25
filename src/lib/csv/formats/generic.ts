@@ -1,5 +1,6 @@
 import type { CsvRow } from '../types';
 import { parseCsv } from './types';
+import { compileNameRules, NameRuleError } from './name-rules';
 
 /**
  * Product name field specification.
@@ -22,6 +23,7 @@ export interface GenericFormatConfig {
   quantityColumn: string;
   /** When true, sum quantities for rows with the same product name */
   aggregate?: boolean;
+  nameCleanupRules?: string[];
 }
 
 /**
@@ -84,10 +86,23 @@ function validateColumns(
  * Rows with missing or invalid values are skipped. If `aggregate` is true,
  * rows sharing the same product name are summed.
  */
-export function parseWithConfig(
+export interface NameChange {
+  record: number;
+  original: string;
+  cleaned: string;
+  quantity: number;
+}
+
+export function parseWithConfig(csvText: string, config: GenericFormatConfig): CsvRow[] {
+  return parseWithConfigDetails(csvText, config).rows;
+}
+
+export function parseWithConfigDetails(
   csvText: string,
   config: GenericFormatConfig
-): CsvRow[] {
+): { rows: CsvRow[]; names: NameChange[] } {
+  const cleanName = compileNameRules(config.nameCleanupRules);
+  const names: NameChange[] = [];
   const records = parseCsv(csvText);
   if (records.length < 2) {
     throw new Error('CSV must have at least a header and one data row');
@@ -106,11 +121,16 @@ export function parseWithConfig(
   const rows: CsvRow[] = [];
   const tally = new Map<string, number>();
 
-  for (const cols of records.slice(1)) {
-    const productName = resolveProductName(config.productNameColumn, cols, headerIndex);
+  for (const [index, cols] of records.slice(1).entries()) {
+    const original = resolveProductName(config.productNameColumn, cols, headerIndex);
     const qty = parseInt(cols[qtyCol], 10);
 
-    if (!productName || isNaN(qty) || qty <= 0) continue;
+    if (!original || isNaN(qty) || qty <= 0) continue;
+    const productName = cleanName(original);
+    if (!productName.trim()) {
+      throw new NameRuleError(`CSV record ${index + 2}: cleanup removed the entire product name. Adjust the rules before importing.`);
+    }
+    names.push({ record: index + 2, original, cleaned: productName, quantity: qty });
 
     if (config.aggregate) {
       tally.set(productName, (tally.get(productName) || 0) + qty);
@@ -120,11 +140,11 @@ export function parseWithConfig(
   }
 
   if (config.aggregate) {
-    return Array.from(tally.entries()).map(([productName, quantity]) => ({
+    return { names, rows: Array.from(tally.entries()).map(([productName, quantity]) => ({
       productName,
       quantity
-    }));
+    })) };
   }
 
-  return rows;
+  return { rows, names };
 }

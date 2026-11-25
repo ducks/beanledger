@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { query } from '$lib/db';
+import { validateNameRules, NameRuleError } from '$lib/csv/formats/name-rules';
 import { newId } from '$lib/server/ids';
 import {
   handle, readBody, requireString, optionalString, optionalId, requireId, optionalBoolean, paramId, ValidationError
@@ -18,7 +19,14 @@ function formatConfig(value: unknown): CsvFormatConfig {
   if (typeof config.quantityColumn !== 'string' || config.quantityColumn.trim() === '') {
     throw new ValidationError('config.quantityColumn is required');
   }
+  let nameCleanupRules: string[];
+  try { nameCleanupRules = validateNameRules(config.nameCleanupRules); }
+  catch (err) {
+    if (err instanceof NameRuleError) throw new ValidationError(err.message);
+    throw err;
+  }
   return {
+    nameCleanupRules,
     productNameColumn: name as CsvFormatConfig['productNameColumn'],
     quantityColumn: config.quantityColumn,
     aggregate: config.aggregate === true
