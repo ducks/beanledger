@@ -2,6 +2,7 @@
   import PackagingChoice from '$lib/components/PackagingChoice.svelte';
   import { packagingFields } from '$lib/packaging-choice';
   import { onMount } from 'svelte';
+  import type { NameChange } from '$lib/csv/formats/generic';
   import type { MatchResult } from '$lib/csv';
   import { skuToGroupLabel, parseLbsFromSkuName } from '$lib/csv';
   import type { RoastGroup, BatchOverride, Product, CsvFormat } from '$lib/types';
@@ -22,6 +23,7 @@
   let loading = $state(false);
   let preview = $state<MatchResult[] | null>(null);
   let error = $state('');
+  let nameChanges = $state<NameChange[]>([]);
   let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
   let groups = $state<RoastGroup[]>([]);
   let products = $state<Product[]>([]);
@@ -336,6 +338,7 @@
       }
 
       preview = data.matches;
+      nameChanges = data.nameChanges ?? [];
       stats = {
         total: data.total,
         matched: data.matches.filter((m: MatchResult) => m.confidence === 'exact' || m.confidence === 'alias').length,
@@ -461,6 +464,16 @@
 
   {#if preview}
     <div class="preview-section">
+      {#if nameChanges.length > 0}
+        <details class="cleanup-summary">
+          <summary>Name cleanup changed {nameChanges.length} CSV record(s)</summary>
+          <p>Saved rules were applied before matching and grouping. Quantities are unchanged.</p>
+          <ul>{#each nameChanges.slice(0, 20) as row}
+            <li>Record {row.record}: <s>{row.original}</s> → <strong>{row.cleaned}</strong> (× {row.quantity})</li>
+          {/each}</ul>
+          {#if nameChanges.length > 20}<p>Showing the first 20 changed records.</p>{/if}
+        </details>
+      {/if}
       <div class="stats">
         <div class="stat">
           <span class="label">Total:</span>
@@ -720,6 +733,8 @@
 </div>
 
 <style>
+  .cleanup-summary { margin-bottom: 16px; overflow-wrap: anywhere; }
+  .cleanup-summary li { margin-block: 8px; }
   .csv-import {
     background: var(--bg-raised);
     border: 1px solid var(--border);

@@ -84,6 +84,7 @@ export interface ImportAlias {
 }
 
 export interface CsvFormatConfig {
+  nameCleanupRules?: string[];
   productNameColumn: string | { template: string };
   quantityColumn: string;
   aggregate?: boolean;

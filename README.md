@@ -286,3 +286,45 @@ TLS; other ports require STARTTLS and fail if the server cannot upgrade. Existin
 `SMTP_URL` deployments keep their current behavior. Local `console` and `file`
 transports are unchanged. This configures delivery only; creating provider
 credentials and verifying a sender domain remain operator setup tasks.
+
+## CSV name cleanup rules (spike)
+
+In Catalog → CSV Formats, upload a sample and map the name/quantity columns,
+then add optional **Name cleanup rules**. One JSON-style double-quoted pattern
+per line, for example:
+
+```text
+"Grind: Whole Bean"
+"appstle-selected-selling-plan: {number}"
+```
+
+Rules remove matching text from the resolved product name. Text and spaces match
+exactly and case-sensitively. The only placeholder is `{number}`, matching a
+complete sequence of ASCII digits, not a decimal. Each rule may contain one
+placeholder and must include nonblank literal text. There are no wildcard or
+regex operators; punctuation such as `.*` is literal. Escape an embedded quote
+as `\"`. Unknown braces, malformed quoting and
+empty rules are rejected. Limits: 20 rules, 300 characters per decoded pattern.
+
+Rules run in listed order after column/template expansion and before aggregation
+and product matching. All occurrences are removed; changed names have whitespace
+collapsed and trimmed. Other punctuation remains literal, so include unwanted
+separators in the pattern. Unchanged names retain their existing behavior.
+Quantities are never modified. If cleanup empties any otherwise valid product
+name, preview/import fails with its CSV record number; no orders are inserted.
+
+The editor shows original/cleaned names before grouping and the resulting import
+output. The import preview also shows changed names. Clearing rules and saving
+turns cleanup off for future uploads. Existing orders and catalog names are not
+rewritten. Rules live in the tenant-scoped format JSON; no schema migration or
+new dependency is required. Formats without rules retain their existing behavior.
+Legacy auto-detection has no saved cleanup rules.
+
+These examples are synthetic; the roaster's original attached CSV was not
+available in the shared chat. This spike has no row exclusion, editable names,
+automatic rule inference, or catch-all wildcard. A numeric-only placeholder does
+not recognize arbitrary alphanumeric IDs.
+
+Validation:
+`pnpm test`, `pnpm check`, `pnpm build:ci`, and
+`CI=1 pnpm test:e2e csv-name-rules.spec.ts` (disposable local PostgreSQL).
