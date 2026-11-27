@@ -71,16 +71,13 @@
   <header>
     <div class="container">
       <div class="brand">
-        <a href="/">
-          <img src="/images/bean-ledger-logo.png" alt="BeanLedger" class="logo" />
-        </a>
         {#if data.tenant}
           <span class="tenant-name">{data.tenant.name}</span>
         {/if}
       </div>
       <div class="user-menu">
-        <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle theme">
-          {theme === 'dark' ? '☀' : '☾'}
+        <button class="theme-toggle" onclick={toggleTheme} aria-label="Toggle theme" aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          <span class="theme-dot" aria-hidden="true"></span>
         </button>
         <span class="username">{data.user.username}</span>
         <button onclick={handleLogout}>Log out</button>
@@ -104,6 +101,9 @@
 {@render children()}
 
 <style>
+  @font-face { font-family: 'JetBrains Mono'; src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+  @font-face { font-family: 'JetBrains Mono'; src: url('/fonts/JetBrainsMono-Bold.woff2') format('woff2'); font-style: normal; font-weight: 600 800; font-display: swap; }
+
   .verify-banner {
     display: flex;
     gap: 1rem;
@@ -124,33 +124,34 @@
   }
 
   :global(:root) {
-    --font-family: Arial, Helvetica, sans-serif;
+    --page-gutter: 32px;
+    --font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
 
     /* Surfaces */
-    --bg: #f6f4eb;
-    --bg-raised: #eae8d8;
-    --bg-sunken: #ddd9c4;
-    --bg-accent: #f0e8d4;
+    --bg: #ECEBE6;
+    --bg-raised: #FFFFFF;
+    --bg-sunken: #E2E0D8;
+    --bg-accent: #E2E0D8;
 
     /* Borders */
-    --border: #c8c4a8;
-    --border-subtle: #d8d4bc;
+    --border: #CFCDC5;
+    --border-subtle: #CFCDC5;
 
     /* Text */
-    --text: #231f20;
-    --text-muted: #6b7360;
-    --text-inverse: #f6f4eb;
+    --text: #141414;
+    --text-muted: #55534D;
+    --text-inverse: #ECEBE6;
 
-    /* Brand (gold) */
-    --accent: #b29244;
-    --accent-hover: #9d7d37;
+    /* Ledger links and emphasis */
+    --accent: #2F5E8C;
+    --accent-hover: #254B70;
 
     /* Dark button */
-    --button-dark: #231f20;
+    --button-dark: #141414;
     --button-dark-hover: #3a3536;
 
     /* Danger */
-    --danger: #b75742;
+    --danger: #A8321E;
     --danger-hover: #9d4836;
     --danger-bg: #f7e6e4;
     --danger-border: #d8afa7;
@@ -168,32 +169,32 @@
     --neutral-text: #383d41;
 
     /* Muted green (neutral-positive) */
-    --muted-green: #6b7360;
+    --muted-green: #55534D;
     --muted-green-hover: #5a6250;
 
     color-scheme: light;
   }
 
   :global(:root[data-theme="dark"]) {
-    --bg: #1e1c1a;
-    --bg-raised: #2a2723;
-    --bg-sunken: #16140f;
-    --bg-accent: #34302a;
+    --bg: #141414;
+    --bg-raised: #1E1E1C;
+    --bg-sunken: #0B0B0B;
+    --bg-accent: #292927;
 
-    --border: #3f3b31;
-    --border-subtle: #2f2c25;
+    --border: #3A3935;
+    --border-subtle: #3A3935;
 
-    --text: #ede5d0;
-    --text-muted: #9a9182;
-    --text-inverse: #1e1c1a;
+    --text: #ECEBE6;
+    --text-muted: #BDBBB4;
+    --text-inverse: #141414;
 
-    --accent: #d4a84b;
-    --accent-hover: #e5bc5f;
+    --accent: #7FA6CC;
+    --accent-hover: #A3C5E5;
 
-    --button-dark: #ede5d0;
+    --button-dark: #ECEBE6;
     --button-dark-hover: #fffaeb;
 
-    --danger: #d67d6a;
+    --danger: #F0634B;
     --danger-hover: #e89584;
     --danger-bg: #3a201c;
     --danger-border: #5c3530;
@@ -215,25 +216,25 @@
 
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme="light"])) {
-      --bg: #1e1c1a;
-      --bg-raised: #2a2723;
-      --bg-sunken: #16140f;
-      --bg-accent: #34302a;
+      --bg: #141414;
+      --bg-raised: #1E1E1C;
+      --bg-sunken: #0B0B0B;
+      --bg-accent: #292927;
 
-      --border: #3f3b31;
-      --border-subtle: #2f2c25;
+      --border: #3A3935;
+      --border-subtle: #3A3935;
 
-      --text: #ede5d0;
-      --text-muted: #9a9182;
-      --text-inverse: #1e1c1a;
+      --text: #ECEBE6;
+      --text-muted: #BDBBB4;
+      --text-inverse: #141414;
 
-      --accent: #d4a84b;
-      --accent-hover: #e5bc5f;
+      --accent: #7FA6CC;
+      --accent-hover: #A3C5E5;
 
-      --button-dark: #ede5d0;
+      --button-dark: #ECEBE6;
       --button-dark-hover: #fffaeb;
 
-      --danger: #d67d6a;
+      --danger: #F0634B;
       --danger-hover: #e89584;
       --danger-bg: #3a201c;
       --danger-border: #5c3530;
@@ -275,7 +276,7 @@
   .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 var(--page-gutter);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -287,20 +288,8 @@
     gap: 1rem;
   }
 
-  .brand a {
-    display: block;
-    line-height: 0;
-  }
 
-  .logo {
-    height: 50px;
-    width: auto;
-    transition: opacity 0.2s;
-  }
 
-  .brand a:hover .logo {
-    opacity: 0.8;
-  }
 
   .tenant-name {
     color: var(--text-muted);
@@ -336,17 +325,49 @@
   }
 
   .theme-toggle {
-    padding: 0.5rem 0.75rem;
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border);
-    font-size: 1rem;
-    line-height: 1;
+    border: 0;
+    cursor: pointer;
   }
 
   .theme-toggle:hover {
-    background: var(--bg-sunken);
-    color: var(--text);
-    border-color: var(--border);
+    background: transparent;
   }
+
+  .theme-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #ECEBE6;
+    background: #ECEBE6;
+  }
+
+  :global([data-theme="dark"]) .theme-dot {
+    background: #0B0B0B;
+  }
+
+  .theme-toggle:hover .theme-dot {
+    box-shadow: 0 0 0 4px rgb(236 235 230 / 12%);
+  }
+
+  header {
+    background: #0B0B0B;
+    color: #ECEBE6;
+    padding: 0.65rem 0;
+    font-family: var(--font-family);
+    line-height: 1.5;
+  }
+  .tenant-name, .username { color: #ECEBE6; font-size: 15px; }
+  .tenant-name { font-weight: 700; }
+  .theme-toggle, .theme-toggle:hover { color: #ECEBE6; background: transparent; }
+  header button { background: transparent; color: #ECEBE6; border-color: #55534D; border-radius: 0; font-family: inherit; font-size: 14px; font-weight: 500; }
+  :global(button), :global(input), :global(select), :global(textarea) { font-family: inherit; }
+  :global(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (max-width: 600px) { :global(:root) { --page-gutter: 16px; } }
+  @media (max-width: 480px) { .user-menu { gap: 0.5rem; } .username { display: none; } .brand { gap: 0.5rem; } }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import './workspace-actions.css';
   import { onMount } from 'svelte';
   import type { RoastGroup, Product, Order, BatchOverride } from '$lib/types';
   import { calcGroup, formatPackageSize, formatWeight, parseWeight, toUnits, unitLabel } from '$lib/calc';
@@ -266,29 +267,31 @@
 <div class="planner">
   <header class="header">
     <a href="/" class="title">
-      <h1>BeanLedger</h1>
+      <h1><img class="wordmark light-wordmark" src="/images/ledger/wordmark-primary.svg" alt="BeanLedger" /><img class="wordmark dark-wordmark" src="/images/ledger/wordmark-on-dark.svg" alt="BeanLedger" /></h1>
       <p>Coffee roaster production planner</p>
     </a>
     <div class="header-actions">
-      <button
-        class="action-button"
+      <div class="workspace-actions" role="group" aria-label="Workspace tools">
+      <button class="action-button" class:open={showPickList} aria-haspopup="dialog"
         disabled={orders.length === 0}
         onclick={() => showPickList = true}
       >
-        ☰ Pick List
+        Pick List
       </button>
-      <button class="action-button" onclick={() => showReports = true}>
-        ▦ Reports
+      <button class="action-button" class:open={showReports} aria-haspopup="dialog" onclick={() => showReports = true}>
+        Reports
       </button>
-      <button class="action-button" onclick={() => showCatalog = true}>
-        ⚙ Catalog
+      <button class="action-button" class:open={showCatalog} aria-haspopup="dialog" onclick={() => showCatalog = true}>
+        Catalog
       </button>
-      <button class="action-button" onclick={() => showSettings = true}>
-        ⚙ Settings
+      <button class="action-button" class:open={showSettings} aria-haspopup="dialog" onclick={() => showSettings = true}>
+        Settings
       </button>
-      <button class="action-button" onclick={() => showPackaging = true}>
-        ▤ Packaging
+      <button class="action-button" class:open={showPackaging} aria-haspopup="dialog" onclick={() => showPackaging = true}>
+        Packaging
       </button>
+      </div>
+      <div class="day-actions">
       {#if dayStatus === 'scheduled'}
         <button class="active-button" onclick={markAsActive}>
           🟢 Mark as Active
@@ -307,6 +310,7 @@
             {dayStatus.charAt(0).toUpperCase() + dayStatus.slice(1)}
           </span>
         {/if}
+      </div>
       </div>
     </div>
   </header>
@@ -328,108 +332,50 @@
     </div>
   </div>
 
-  <div class="groups">
-    {#each plan as group}
-      {@const calc = group.calc}
-      {@const needsRoast = calc.needed > 0}
-      <div class="group-card">
-        <div class="group-header">
-          <span class="label">{group.label}</span>
-        </div>
-
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-label">Total</div>
-            <div class="stat-value">{formatWeight(calc.totalLbs, $units)}</div>
-          </div>
-
-          <div class="stat">
-            <div class="stat-label">Leftover</div>
-            <input
-              type="number"
-              step="0.01"
-              class="leftover-input"
+  <div class="ledger-scroll" role="region" aria-label="Roast plan" tabindex="0">
+    <!-- Explicit roles preserve table semantics when mobile CSS changes display. -->
+    <table class="ledger" role="table">
+      <caption>Roast requirements · {unitLabel($units)}</caption>
+      <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Coffee</th><th role="columnheader" scope="col">Total</th><th role="columnheader" scope="col">Leftover</th><th role="columnheader" scope="col">Needed</th><th role="columnheader" scope="col">Pred. leftover</th><th role="columnheader" scope="col">Batches</th></tr></thead>
+      {#each plan as group (group.id)}
+        {@const calc = group.calc}
+        {@const entries = ordersByGroup[group.id] ?? []}
+        <tbody role="rowgroup">
+          <tr role="row" class:idle={calc.totalLbs === 0}>
+            <th role="rowheader" scope="row">
+              {#if entries.length}
+                <button class="group-toggle" aria-expanded={expandedGroups.has(group.id)} aria-controls="details-{group.id}" onclick={() => toggleGroup(group.id)}>
+                  <span aria-hidden="true">{expandedGroups.has(group.id) ? '▾' : '▸'}</span> {group.label}
+                  <small>{entries.length} order{entries.length === 1 ? '' : 's'}</small>
+                </button>
+              {:else}{group.label}<small>No orders</small>{/if}
+            </th>
+            <td role="cell"><span class="mobile-label" aria-hidden="true">Total</span>{formatWeight(calc.totalLbs, $units)}</td>
+            <td role="cell"><span class="mobile-label" aria-hidden="true">Leftover</span><input aria-label="{group.label} leftover ({unitLabel($units)})" type="number" step="0.01" class="leftover-input"
               value={toUnits(leftovers[group.id] ?? 0, $units).toFixed(2)}
-              onchange={(e) => {
-                const lbs = parseWeight(e.currentTarget.value, $units);
-                updateLeftover(group.id, isFinite(lbs) ? lbs : 0);
-              }}
-              onwheel={(e) => e.currentTarget.blur()}
-            />
-            <span class="unit">{unitLabel($units)}</span>
-          </div>
-
-          <div class="stat">
-            <div class="stat-label">Needed</div>
-            <div class="stat-value accent">{needsRoast ? formatWeight(calc.needed, $units) : '—'}</div>
-            {#if needsRoast && calc.roastLossPct > 0}
-              <div class="stat-note">green ({calc.roastLossPct}% loss)</div>
-            {/if}
-          </div>
-        </div>
-
-        {#if needsRoast}
-          <div class="batches">
-            <div class="batch-info">
-              <div class="batch-label">Predicted Leftover</div>
-              <div class="batch-precise">{formatWeight(calc.predictedLeftover, $units)}</div>
-            </div>
-            <div class="batch-rounded">
-              <div class="batch-label">Batches</div>
-              <div class="batch-up">{calc.batchesUp}</div>
-            </div>
-          </div>
-        {:else if calc.totalLbs > 0}
-          <div class="batches">
-            <div class="batch-info">
-              <div class="batch-label">Predicted Leftover</div>
-              <div class="batch-precise">{formatWeight(leftovers[group.id] - calc.totalLbs, $units)}</div>
-            </div>
-            <div class="batch-note">
-              <div class="batch-label">From Stock</div>
-            </div>
-          </div>
-        {/if}
-
-        {#if ordersByGroup[group.id] && ordersByGroup[group.id].length > 0}
-          <div class="products-section">
-            <button
-              class="products-toggle"
-              onclick={() => toggleGroup(group.id)}
-            >
-              <span class="toggle-icon">{expandedGroups.has(group.id) ? '▼' : '▶'}</span>
-              <span class="toggle-text">
-                {ordersByGroup[group.id].length} product{ordersByGroup[group.id].length === 1 ? '' : 's'}
-              </span>
-            </button>
-
-            {#if expandedGroups.has(group.id)}
-              <div class="products-list">
-                {#each ordersByGroup[group.id] as { order, product }}
-                  <div class="product-item">
-                    <div class="product-name">
-                      {product.name}
-                      {#if !order.import_batch_id || order.import_batch_id.trim() === ''}
-                        <span class="manual-badge" title="Manually added">M</span>
-                      {/if}
-                    </div>
-                    <div class="product-qty">×{order.qty}</div>
-                    <div class="product-weight">{formatWeight(product.lbs * order.qty, $units)}</div>
-                    <button
-                      class="delete-product-btn"
-                      onclick={() => deleteOrder(order.id)}
-                      title="Remove from production day"
-                    >
-                      ×
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {/each}
+              onchange={(e) => { const lbs = parseWeight(e.currentTarget.value, $units); updateLeftover(group.id, isFinite(lbs) ? lbs : 0); }}
+              onwheel={(e) => e.currentTarget.blur()} /></td>
+            <td role="cell" class="needed"><span class="mobile-label" aria-hidden="true">Needed</span>{calc.needed > 0 ? formatWeight(calc.needed, $units) : '—'}
+              {#if calc.needed > 0 && calc.roastLossPct > 0}<small>green ({calc.roastLossPct}% loss)</small>{/if}
+            </td>
+            <td role="cell" class="predicted"><span class="mobile-label" aria-hidden="true">Pred. leftover</span>{calc.needed > 0 ? formatWeight(calc.predictedLeftover, $units) : calc.totalLbs > 0 ? formatWeight((leftovers[group.id] ?? 0) - calc.totalLbs, $units) : '—'}
+              {#if calc.needed <= 0 && calc.totalLbs > 0}<small>From stock</small>{/if}
+            </td>
+            <td role="cell" class="batch-count"><span class="mobile-label" aria-hidden="true">Batches</span>{calc.batchesUp}</td>
+          </tr>
+        </tbody>
+        <tbody role="rowgroup" id="details-{group.id}" hidden={!expandedGroups.has(group.id)}>
+          {#each entries as { order, product } (order.id)}
+            <tr role="row" class="order-row">
+              <th role="rowheader" scope="row">{product.name} <small>×{order.qty}{!order.import_batch_id?.trim() ? ' · Manual' : ''}</small></th>
+              <td role="cell"><span class="mobile-label" aria-hidden="true">Order total</span>{formatWeight(product.lbs * order.qty, $units)}</td>
+              <td role="cell" colspan="4"><button class="remove-order" onclick={() => deleteOrder(order.id)} aria-label="Remove {product.name} from production day">Remove</button></td>
+            </tr>
+          {/each}
+        </tbody>
+      {/each}
+      <tfoot role="rowgroup"><tr role="row"><th role="rowheader" scope="row">Totals</th><td role="cell"><span class="mobile-label" aria-hidden="true">Total</span>{formatWeight(plan.reduce((sum, g) => sum + g.calc.totalLbs, 0), $units)}</td><td role="cell"></td><td role="cell"><span class="mobile-label" aria-hidden="true">Needed</span>{formatWeight(plan.reduce((sum, g) => sum + g.calc.needed, 0), $units)}</td><td role="cell"></td><td role="cell"><span class="mobile-label" aria-hidden="true">Batches</span>{plan.reduce((sum, g) => sum + g.calc.batchesUp, 0)}</td></tr></tfoot>
+    </table>
   </div>
 </div>
 
@@ -559,7 +505,7 @@
   .planner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 20px var(--page-gutter);
   }
 
   .header {
@@ -598,30 +544,8 @@
     align-items: flex-end;
   }
 
-  .action-button {
-    padding: 5px 14px;
-    background: var(--text);
-    border: 1px solid var(--text);
-    border-radius: 5px;
-    color: var(--bg);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font-family);
-    white-space: nowrap;
-  }
 
-  .action-button:hover:not(:disabled) {
-    background: var(--button-dark-hover);
-    border-color: var(--button-dark-hover);
-  }
 
-  .action-button:disabled {
-    background: none;
-    border-color: var(--border);
-    color: var(--text-muted);
-    cursor: not-allowed;
-  }
 
 
   .date-display {
@@ -894,136 +818,6 @@
     color: var(--text-muted);
   }
 
-  .groups {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
-  }
-
-  .group-card {
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-  }
-
-  .group-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .label {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .stats {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
-  }
-
-  .stat {
-    flex: 1;
-  }
-
-  .stat-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 4px;
-  }
-
-  .stat-value {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .stat-value.accent {
-    color: var(--danger);
-  }
-
-  .stat input {
-    width: 62px;
-    padding: 3px 6px;
-    background: var(--bg-sunken);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--accent);
-    font-family: var(--font-family);
-    font-size: 12px;
-  }
-
-  .leftover-input::-webkit-inner-spin-button,
-  .leftover-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .leftover-input[type=number] {
-    -moz-appearance: textfield;
-  }
-
-  .unit {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-left: 4px;
-  }
-
-  .stat-note {
-    font-size: 9px;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-
-  .batches {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-  }
-
-  .batch-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .batch-weight {
-    color: var(--text);
-  }
-
-  .batch-precise {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-top: 4px;
-  }
-
-  .batch-rounded {
-    text-align: right;
-  }
-
-  .batch-note {
-    text-align: right;
-  }
-
-  .batch-up {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--danger);
-    line-height: 1;
-    margin-top: 2px;
-  }
-
   /* Modal styles */
   .modal-backdrop {
     position: fixed;
@@ -1087,111 +881,72 @@
   }
 
   /* Products section */
-  .products-section {
-    margin-top: 12px;
-    border-top: 1px solid var(--border-subtle);
-    padding-top: 10px;
+  .header { flex-wrap: wrap; gap: 1.5rem; padding: 1rem 0 1.5rem; border-bottom: 1px solid var(--border); }
+  .header-actions { flex-wrap: wrap; align-items: center; }
+  .wordmark { width: 270px; max-width: 100%; height: auto; display: block; }
+  .dark-wordmark { display: none; }
+  :global([data-theme="dark"]) .light-wordmark { display: none; }
+  :global([data-theme="dark"]) .dark-wordmark { display: block; }
+  .title p { font-size: 11px; margin-top: 10px; }
+  .planner :global(.drop-zone), .planner :global(.import-item) { border-radius: 0; }
+  .planner :global(.format-warning) { color: var(--text-muted); border-color: var(--border); border-radius: 0; }
+  .planner :global(.import-item) { background: transparent; border: 0; border-bottom: 1px solid var(--border); }
+  .planner :global(.delete-button) { background: transparent; color: var(--danger); }
+  .ledger-scroll { overflow-x: auto; margin-bottom: 2rem; }
+  .ledger { width: 100%; min-width: 790px; border-collapse: collapse; font-size: 12px; border-top: 3px solid var(--text); border-bottom: 4px double var(--text); background: var(--bg-raised); font-variant-numeric: tabular-nums; }
+  .ledger caption { text-align: left; color: var(--text-muted); padding: 0 0 10px; }
+  .ledger th, .ledger td { padding: 16px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .ledger th:first-child { text-align: left; width: 30%; border-right: 4px double var(--danger); }
+  .ledger thead th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
+  .ledger small { display: block; font-size: 10px; font-weight: normal; color: var(--text-muted); margin-top: 5px; }
+  .group-toggle { width: 100%; background: none; border: 0; padding: 0; color: inherit; text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
+  .group-toggle:hover { color: var(--accent); }
+  .leftover-input { width: 76px; padding: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: right; }
+  .needed { color: var(--danger); font-weight: 700; }
+  .predicted { color: var(--accent); }
+  .batch-count { font-size: 20px; font-weight: 700; }
+  .idle { color: var(--text-muted); }
+  .order-row { background: var(--bg); }
+  .order-row th { font-weight: normal; padding-left: 30px; }
+  .remove-order { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 5px 8px; cursor: pointer; }
+  .ledger tfoot { font-weight: 700; }
+  .planner :global(.csv-import), .planner :global(.import-history) { border-radius: 0; border-top: 3px solid var(--text); }
+  .planner :global(.csv-import h3), .planner :global(.import-history h3) { text-transform: uppercase; letter-spacing: 0.07em; font-size: 14px; }
+  .planner :global(button), .planner :global(input), .planner :global(select), .planner :global(textarea) { border-radius: 0; }
+  @media (max-width: 600px) { .planner { padding: 16px; } .date-display { align-items: flex-start; } }
+
+  .mobile-label { display: none; }
+  @media (max-width: 800px) {
+    .ledger-scroll { overflow: visible; }
+    .ledger { display: block; min-width: 0; border-top: 0; background: transparent; }
+    .ledger caption { display: block; }
+    .ledger thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .ledger tbody:not([hidden]), .ledger tfoot { display: block; }
+    .ledger tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--bg-raised); }
+    .ledger th, .ledger td { min-width: 0; padding: 12px 16px; text-align: left; overflow-wrap: anywhere; }
+    .ledger th:first-child { grid-column: 1 / -1; width: auto; border-right: 0; border-left: 4px double var(--danger); border-top: 3px solid var(--text); padding: 16px; }
+    .ledger tbody + tbody:not([id]) { margin-top: 20px; }
+    .ledger .mobile-label { display: block; color: var(--text-muted); font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+    .ledger .batch-count { grid-column: 1 / -1; font-size: 18px; }
+    .group-toggle { min-height: 44px; font-size: 14px; }
+    .leftover-input { width: 100%; max-width: 110px; min-height: 44px; text-align: left; font-size: 16px; }
+    .ledger .order-row { background: var(--bg); }
+    .ledger .order-row th:first-child { border-top: 0; border-left: 0; font-size: 13px; }
+    .remove-order { min-height: 44px; padding: 8px 12px; }
+    .ledger .order-row td:last-child { display: flex; align-items: center; justify-content: flex-end; }
+    .ledger tfoot { margin-top: 24px; }
+    .ledger tfoot td:empty { display: none; }
   }
 
-  .products-toggle {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    background: none;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: var(--font-family);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background 0.15s;
+  /* Align the text tabs just above the header rule, as in the brand reference. */
+  @media (min-width: 1000px) {
+    .header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 24px; padding-bottom: 0; }
+    .header-actions { display: contents; }
+    .header :global(.workspace-actions) { justify-content: center; margin-bottom: -1px; }
+    .title { padding-bottom: 14px; }
+    .day-actions { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; padding-bottom: 14px; }
   }
-
-  .products-toggle:hover {
-    background: var(--border-subtle);
-  }
-
-  .toggle-icon {
-    font-size: 10px;
-    line-height: 1;
-    transition: transform 0.15s;
-  }
-
-  .toggle-text {
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .products-list {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .product-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: var(--bg);
-    border: 1px solid var(--border-subtle);
-    border-radius: 4px;
-    font-size: 13px;
-  }
-
-  .product-name {
-    flex: 1;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .product-qty {
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: 12px;
-  }
-
-  .product-weight {
-    color: var(--text-muted);
-    font-size: 12px;
-    min-width: 50px;
-    text-align: right;
-  }
-
-  .delete-product-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
-  }
-
-  .delete-product-btn:hover {
-    color: #d9534f;
-  }
-
-  .product-item:hover .delete-product-btn {
-    opacity: 1;
-  }
-
-  .manual-badge {
-    display: inline-block;
-    background: var(--accent);
-    color: var(--bg);
-    font-size: 8px;
-    padding: 2px 5px;
-    border-radius: 3px;
-    font-weight: 700;
-    vertical-align: middle;
+  @media (max-width: 999px) {
+    .day-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
   }
 </style>

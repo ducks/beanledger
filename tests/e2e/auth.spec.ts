@@ -10,7 +10,9 @@ test('the login API issues a session and lands on the dashboard', async ({ page 
   expect(res.status()).toBe(200);
 
   await page.goto('/');
-  await expect(page.getByRole('img', { name: /beanledger/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'BeanLedger', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Start New Roast Day', exact: true })).toBeVisible();
 });
 
 test('rejects bad credentials', async ({ page }) => {

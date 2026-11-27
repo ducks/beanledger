@@ -469,6 +469,7 @@
   }
 </script>
 
+<div class="catalog-overlay">
 <div class="modal-backdrop" onclick={handleBackdropClick}>
   <div class="modal">
     <div class="modal-header">
@@ -511,8 +512,8 @@
     <div class="modal-body">
       {#if tab === 'products' || tab === 'groups'}
         <div class="tabs" aria-label="Catalog archive views">
-          <button class:active={!archived} onclick={() => { archived = false; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Active</button>
-          <button class:active={archived} onclick={() => { archived = true; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Archived</button>
+          <button class="tab" class:active={!archived} onclick={() => { archived = false; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Active</button>
+          <button class="tab" class:active={archived} onclick={() => { archived = true; selectedProductIds = new Set(); selectedGroupIds = new Set(); }}>Archived</button>
         </div>
         {#if archived}<p>Archived items remain in reports and existing orders. Restore a group first, then restore the products you need.</p>{/if}
       {/if}
@@ -969,6 +970,8 @@
   </div>
 {/if}
 
+</div>
+
 <style>
   .modal-backdrop {
     position: fixed;
@@ -1020,6 +1023,7 @@
 
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
   }
 
@@ -1036,8 +1040,8 @@
   }
 
   .tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
+    color: var(--text);
+    border-bottom-color: var(--danger);
   }
 
   .modal-body {
@@ -1335,5 +1339,31 @@
 
   .cancel-button:hover {
     background: var(--bg-sunken);
+  }
+
+  .catalog-overlay { display: contents; }
+  .catalog-overlay :global(button) {
+    border-radius: 0;
+    min-height: 36px;
+    font-family: var(--font-family);
+  }
+  .catalog-overlay :global(button:disabled) { opacity: 0.5; cursor: not-allowed; }
+  .catalog-overlay :global(.candidate button) {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+  }
+  .catalog-overlay :global(.candidate button:hover:not(:disabled)) { background: var(--bg-sunken); }
+  .tab { min-height: 44px; font-weight: 400; color: var(--text); }
+  .tab:hover, .tab:focus-visible { border-bottom-color: var(--danger); }
+  .close-button { min-width: 36px; }
+  .status-toggle { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .status-toggle:hover { background: var(--bg-sunken); }
+  .modal, .form-modal { max-width: calc(100vw - 32px); border-radius: 0; border-top: 3px solid var(--text); }
+  .section-header { flex-wrap: wrap; }
+  @media (max-width: 600px) {
+    .catalog-overlay :global(button) { min-height: 44px; }
+    .tab { padding: 10px 12px; }
   }
 </style>

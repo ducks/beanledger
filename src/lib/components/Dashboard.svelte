@@ -1,4 +1,5 @@
 <script lang="ts">
+  import './workspace-actions.css';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import Catalog from './Catalog.svelte';
@@ -181,17 +182,22 @@
 
 <div class="dashboard">
   <header>
-    <h1>BeanLedger</h1>
+    <a href="/" class="title">
+      <h1><img class="wordmark light-wordmark" src="/images/ledger/wordmark-primary.svg" alt="BeanLedger" /><img class="wordmark dark-wordmark" src="/images/ledger/wordmark-on-dark.svg" alt="BeanLedger" /></h1>
+      <p>Coffee roaster production planner</p>
+    </a>
     <div class="header-actions">
-      <button class="action-button" onclick={() => showCatalog = true}>
-        ⚙ Catalog
+      <div class="workspace-actions" role="group" aria-label="Workspace tools">
+      <button class="action-button" class:open={showCatalog} aria-haspopup="dialog" onclick={() => showCatalog = true}>
+        Catalog
       </button>
-      <button class="action-button" onclick={() => showSettings = true}>
-        ⚙ Settings
+      <button class="action-button" class:open={showSettings} aria-haspopup="dialog" onclick={() => showSettings = true}>
+        Settings
       </button>
-      <button class="action-button" onclick={() => showPackaging = true}>
-        ▤ Packaging
+      <button class="action-button" class:open={showPackaging} aria-haspopup="dialog" onclick={() => showPackaging = true}>
+        Packaging
       </button>
+      </div>
       <button class="primary-button" onclick={startNewDay} disabled={loading || daysLoading || !!daysError}>
         + Start New Roast Day
       </button>
@@ -221,7 +227,7 @@
             <div class="day-header">
               <h3>{formatDate(day.production_date)}</h3>
               <span class="status-badge {getStatusBadge(day.status).class}">
-                {getStatusBadge(day.status).emoji} {getStatusBadge(day.status).label}
+                {getStatusBadge(day.status).label}
               </span>
             </div>
             <div class="day-meta">
@@ -233,6 +239,8 @@
           </a>
           <button
             class="delete-button"
+            aria-label="Delete roast day {formatDate(day.production_date)}"
+            title="Delete roast day"
             onclick={(e) => { e.preventDefault(); deleteDay(day.production_date); }}
             disabled={loading}
           >
@@ -325,14 +333,18 @@
   .dashboard {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem var(--page-gutter);
   }
 
   header {
     display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    padding: 1rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
   }
 
   h1 {
@@ -341,40 +353,46 @@
     margin: 0;
   }
 
+  .title { min-width: 0; text-decoration: none; }
+  .title p { margin: 10px 0 0; color: var(--text-muted); font-size: 11px; }
+  .wordmark { display: block; width: 270px; max-width: 100%; height: auto; }
+  .dark-wordmark { display: none; }
+  :global([data-theme="dark"]) .light-wordmark { display: none; }
+  :global([data-theme="dark"]) .dark-wordmark { display: block; }
+
   .header-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
     align-items: center;
   }
 
-  .action-button {
-    padding: 5px 14px;
-    background: var(--text);
-    border: 1px solid var(--text);
-    border-radius: 5px;
-    color: var(--bg);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font-family);
-    white-space: nowrap;
-  }
 
-  .action-button:hover {
-    background: var(--button-dark-hover);
-    border-color: var(--button-dark-hover);
-  }
 
   .primary-button {
-    padding: 1rem 2rem;
+    padding: 10px 14px;
     background: var(--muted-green);
     color: var(--bg);
     border: none;
-    border-radius: 8px;
+    border-radius: 0;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 11px;
     font-weight: 600;
     font-family: var(--font-family);
+  }
+
+  @media (min-width: 1000px) {
+    header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 24px; padding-bottom: 0; }
+    .header-actions { display: contents; }
+    header :global(.workspace-actions) { justify-content: center; margin-bottom: -1px; }
+    .title { padding-bottom: 14px; }
+    .primary-button { margin-bottom: 14px; }
+  }
+
+  @media (max-width: 600px) {
+    .dashboard { padding: 16px; }
+    .header-actions { gap: 12px; }
+    .primary-button { min-height: 44px; }
   }
 
   .primary-button:hover:not(:disabled) {
@@ -403,40 +421,38 @@
 
   .days-list {
     display: grid;
-    gap: 1rem;
+    border-top: 3px solid var(--text);
+    border-bottom: 4px double var(--text);
   }
 
   .day-card {
     position: relative;
-    background: var(--bg);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    transition: all 0.2s;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--border);
   }
 
-  .day-card:hover {
-    border-color: var(--text-muted);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  .day-card:hover, .day-card:focus-within {
+    background: var(--bg);
   }
 
   .day-card-link {
     display: block;
-    padding: 1.5rem;
+    padding: 20px 72px 20px 20px;
     text-decoration: none;
     color: inherit;
   }
 
   .delete-button {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 28px;
-    height: 28px;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
     padding: 0;
-    background: var(--bg);
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 0;
     color: var(--danger);
     font-size: 16px;
     font-weight: 700;
@@ -444,12 +460,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s, background 0.2s;
-  }
-
-  .day-card:hover .delete-button {
-    opacity: 1;
   }
 
   .delete-button:hover:not(:disabled) {
@@ -465,6 +475,8 @@
 
   .day-header {
     display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
@@ -472,35 +484,44 @@
 
   .day-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 15px;
     color: var(--text);
   }
 
   .status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
+  .status-badge::before { content: ''; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
+
   .status-active {
-    background: var(--success-bg);
     color: var(--success-text);
   }
 
   .status-scheduled {
-    background: var(--info-bg);
-    color: var(--info-text);
+    color: var(--accent);
   }
 
   .status-completed {
-    background: var(--neutral-bg);
-    color: var(--neutral-text);
+    color: var(--text-muted);
   }
 
   .day-meta {
-    font-size: 0.875rem;
+    font-size: 11px;
+    line-height: 1.6;
     color: var(--text-muted);
+  }
+
+  @media (max-width: 600px) {
+    .day-card-link { padding: 16px 68px 16px 16px; }
+    .delete-button { right: 12px; width: 44px; height: 44px; }
+    .day-header { gap: 8px; }
+    .day-header h3 { font-size: 14px; }
   }
 
   .modal-overlay {
