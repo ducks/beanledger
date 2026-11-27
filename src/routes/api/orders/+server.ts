@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
     if (date) {
       const result = await query<Order>(
-        'SELECT * FROM orders WHERE production_date = $1 AND tenant_id = $2 ORDER BY created_at DESC',
+        'SELECT orders.*, (SELECT snapshot FROM bundle_import_lines b WHERE b.id=orders.bundle_line_id AND b.tenant_id=orders.tenant_id) AS bundle_snapshot FROM orders WHERE production_date = $1 AND tenant_id = $2 ORDER BY created_at DESC',
         [paramDate(date, 'date'), locals.tenant!.id]
       );
       return json(result.rows);
@@ -32,7 +32,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
       conditions.push(`production_date <= $${params.length}`);
     }
     const result = await query<Order>(
-      `SELECT * FROM orders WHERE ${conditions.join(' AND ')} ORDER BY production_date DESC, created_at DESC`,
+      `SELECT orders.*, (SELECT snapshot FROM bundle_import_lines b WHERE b.id=orders.bundle_line_id AND b.tenant_id=orders.tenant_id) AS bundle_snapshot FROM orders WHERE ${conditions.join(' AND ')} ORDER BY production_date DESC, created_at DESC`,
       params
     );
     return json(result.rows);
@@ -74,6 +74,8 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
   const tenantId = locals.tenant.id;
   return handle('Update order', async () => {
     const body = await readBody(request);
+    const bundled = await query('SELECT 1 FROM orders WHERE id=$1 AND tenant_id=$2 AND bundle_line_id IS NOT NULL', [requireId(body),tenantId]);
+    if (bundled.rows.length) return json({error:'Bundle components cannot be edited individually. Delete the source import and import the corrected bundle.'},{status:409});
     const productId = requireId(body, 'product_id');
     if (!(await productExists(productId, tenantId))) {
       return json({ error: 'product_id does not name one of your products' }, { status: 400 });
@@ -107,6 +109,8 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
       return json({ success: true });
     }
     if (id) {
+      const bundled = await query('SELECT 1 FROM orders WHERE id=$1 AND tenant_id=$2 AND bundle_line_id IS NOT NULL', [paramId(id,'id'),tenantId]);
+      if (bundled.rows.length) return json({error:'Bundle components cannot be removed individually. Delete the source import to remove the bundle.'},{status:409});
       const result = await query('DELETE FROM orders WHERE id = $1 AND tenant_id = $2 RETURNING id', [paramId(id, 'id'), tenantId]);
       if (result.rows.length === 0) return json({ error: 'Order not found' }, { status: 404 });
       return json({ success: true });

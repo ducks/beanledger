@@ -32,6 +32,8 @@ export interface Product {
 }
 
 export interface Order {
+  bundle_line_id?: string | null;
+  bundle_snapshot?: import('./bundles').BundleSnapshot | null;
   id: string;
   product_id: string;
   qty: number;

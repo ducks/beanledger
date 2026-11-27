@@ -328,3 +328,69 @@ not recognize arbitrary alphanumeric IDs.
 Validation:
 `pnpm test`, `pnpm check`, `pnpm build:ci`, and
 `CI=1 pnpm test:e2e csv-name-rules.spec.ts` (disposable local PostgreSQL).
+
+## Bundles and subscription lineups
+
+Catalog → Bundles creates an import mapping for a bundle's incoming CSV name
+(case-insensitive, ignoring outer spaces). Keep that name distinct from product
+names and import aliases; ambiguous names block bundle imports. Bundle names,
+contents mode and quantity meaning are established at creation. Archive/restore
+keeps history; use a new bundle for a different kind of offering.
+
+- **Fixed** contents suit sampler packs. Choose existing products and a quantity
+  for each, so every component uses its own coffee weight and packaging assignment.
+- **Rotating** contents use distinct single-origin roast groups in ordered slots.
+  The production date selects a calendar cycle: 1st–14th or 15th–month-end.
+  Current and Next are editable; older cycles remain available for importing
+  backdated production days and for review. The editor's current date uses UTC.
+- **Quantity means bags:** each original subscription record takes one bag from
+  each of the first N slots. Two records of quantity 2 become two bags of slot 1
+  and two of slot 2. They are never combined into a four-slot subscription.
+- **Quantity means packs:** multiply every component by the CSV quantity.
+  Two three-product sample packs produce two bags of each product.
+
+Configure a saved CSV format for bundles. Cleanup rules run before bundle name
+matching, bundle expansion runs before ordinary-row aggregation. Subscription
+exports must preserve one original row per subscription: already aggregated bag
+counts cannot reveal which assortments were ordered. Only product components
+are supported, not nested bundles or automatic coffee allocation.
+
+The import screen previews the parent records and expanded products. Missing
+lineups, archived/unavailable components, invalid bag counts and conflicting
+names block confirmation of the whole import. If contents change after preview,
+confirmation returns 409 and requires a new preview. For exports that already
+include component products, choose **Already expanded — ignore bundle parent
+lines**. This excludes configured parent names and imports the supplied products;
+it does not reconstruct bundle packing or history. Choose the mode explicitly
+based on the export structure—BeanLedger cannot infer whether a separate coffee
+line belongs to a bundle or is an additional purchase.
+
+Every contents save appends a revision. There is no lock workflow. Current-cycle
+edits warn how many imported source lines retain earlier selections, and older
+revisions remain visible. Imported-coffee history shows bag quantities and last
+production dates; these are not shipment confirmations. Recent-selection warnings
+look at coffee roast groups in the previous two cycles, including saved selections
+that were not imported. No stock forecasts or customer-level repeat tracking are
+inferred.
+
+Imports save a parent record with its original CSV record number, quantity,
+selected revision, and component name/weight snapshots. Expanded orders reference
+that record and participate in normal roast calculations and packaging consumption.
+The printable Pick List adds a **Bundle packing** section; its bags are already
+included in normal totals. The source identifier is an internal CSV-line identity,
+not a Shopify order/customer ID. Editing a lineup never remaps existing orders.
+Individual bundle component edits/removals are blocked: delete the source import
+and reimport corrected contents. Adding a manual product creates/updates a separate
+ordinary order. Existing catalog-edit behavior still applies to planner calculations;
+this feature does not freeze all historical product or packaging catalog metadata.
+
+Migration **017_bundles.sql** adds bundle definitions, append-only lineup revisions,
+imported parent records and a nullable order link. Existing orders are unchanged.
+Run the normal migration before serving this application. Tenant-scoped foreign
+keys keep revisions/imports/expanded orders together; deleting an import or roast
+day removes its bundle import records. No production migration is performed by
+building or testing the feature.
+
+Validation: `pnpm test`, `pnpm check`, `pnpm build:ci`, and
+`CI=1 pnpm test:e2e`. Bundle-specific browser/API coverage is in
+`tests/e2e/bundles.spec.ts`; date/expansion tests are in `src/lib/bundles.test.ts`.

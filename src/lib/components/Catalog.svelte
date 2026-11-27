@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Bundles from './Bundles.svelte';
   import PackagingChoice from '$lib/components/PackagingChoice.svelte';
   import { packagingFields } from '$lib/packaging-choice';
   import type { Product, RoastGroup, GroupType, BatchOverride, ImportAlias, CsvFormat } from '$lib/types';
@@ -15,7 +16,7 @@
     onUpdate: () => void;
   } = $props();
 
-  let tab = $state<'products' | 'groups' | 'aliases' | 'formats' | 'duplicates'>('products');
+  let tab = $state<'products' | 'groups' | 'aliases' | 'formats' | 'duplicates' | 'bundles'>('products');
   let archived = $state(false);
   let products = $state<Product[]>([]);
   let groups = $state<RoastGroup[]>([]);
@@ -477,6 +478,7 @@
     </div>
 
     <div class="tabs">
+      <button class="tab" class:active={tab === 'bundles'} onclick={() => tab = 'bundles'}>Bundles</button>
       <button class="tab" class:active={tab === 'duplicates'} onclick={() => tab = 'duplicates'}>Review duplicates</button>
       <button
         class="tab"
@@ -518,6 +520,8 @@
       {/if}
       {#if loading}
         <div class="loading">Loading...</div>
+      {:else if tab === 'bundles'}
+        <Bundles />
       {:else if tab === 'duplicates'}
         <DuplicateReview {products} onEdit={openEditProductForm} onArchive={archiveProduct}/>
       {:else if tab === 'products'}
@@ -985,6 +989,7 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     width: 900px;
+    max-width: calc(100vw - 32px);
     max-height: 88vh;
     display: flex;
     flex-direction: column;
@@ -1020,6 +1025,7 @@
 
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
   }
 
