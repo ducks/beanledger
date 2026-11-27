@@ -1,0 +1,36 @@
+/* These open dialogs, so retain button semantics rather than ARIA tabs. */
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.workspace-actions .action-button {
+  min-height: 44px;
+  padding: 12px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.workspace-actions .action-button:hover:not(:disabled),
+.workspace-actions .action-button:focus-visible,
+.workspace-actions .action-button.open {
+  border-bottom-color: #D2402A;
+}
+[data-theme="dark"] .workspace-actions .action-button:hover:not(:disabled),
+[data-theme="dark"] .workspace-actions .action-button:focus-visible,
+[data-theme="dark"] .workspace-actions .action-button.open {
+  border-bottom-color: #F0634B;
+}
+.workspace-actions .action-button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}

@@ -82,6 +82,7 @@ test('roaster journey: catalog → custom CSV → roast → inventory → archiv
     await expect(page).toHaveURL(/\/planner\?date=\d{4}-\d{2}-\d{2}/);
     date = new URL(page.url()).searchParams.get('date')!;
     plannerUrl = page.url();
+    await page.getByLabel('Format:', {exact:true}).selectOption({label:'Workflow wholesale'});
     await page.locator('input[type=file]').setInputFiles(upload);
     await page.getByRole('button',{name:'Preview Import',exact:true}).click();
     await page.getByRole('button',{name:'Add Product',exact:true}).click();
@@ -97,7 +98,7 @@ test('roaster journey: catalog → custom CSV → roast → inventory → archiv
   });
 
   await test.step('Review roast requirements and seven bags of projected consumption', async () => {
-    await expect(page.locator('.group-card').filter({hasText:'Workflow Coffee'})).toBeVisible();
+    await expect(page.getByRole('row').filter({hasText:'Workflow Coffee'})).toBeVisible();
     await screenshot('03-roast-plan');
     await page.getByRole('button',{name:/Packaging/}).click();
     const row = page.getByRole('row').filter({hasText:'Workflow shared bag'});
