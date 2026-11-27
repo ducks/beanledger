@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { BundleSnapshot } from '$lib/bundles';
   import PackagingChoice from '$lib/components/PackagingChoice.svelte';
   import { packagingFields } from '$lib/packaging-choice';
   import { onMount } from 'svelte';
@@ -23,6 +24,12 @@
   let loading = $state(false);
   let preview = $state<MatchResult[] | null>(null);
   let error = $state('');
+  let bundleLines = $state<BundleSnapshot[]>([]);
+  let bundleErrors = $state<{record:number;name:string;error:string}[]>([]);
+  let skippedBundles = $state<{record:number;name:string}[]>([]);
+  let bundlePreviewToken = $state('');
+  let bundleHandling = $state<'expand'|'components'>('expand');
+  let hasBundles = $state(false);
   let nameChanges = $state<NameChange[]>([]);
   let stats = $state({ total: 0, matched: 0, fuzzy: 0, unmatched: 0 });
   let groups = $state<RoastGroup[]>([]);
@@ -52,6 +59,8 @@
     await loadProducts();
     await loadBatchTypes();
     await loadCsvFormats();
+    const bundleResponse = await fetch('/api/bundles');
+    if (bundleResponse.ok) hasBundles = (await bundleResponse.json()).bundles.length > 0;
 
     // Warn if no batch types exist
     if (batchTypes.length === 0) {
@@ -326,6 +335,7 @@
           csvText,
           productionDate,
           confirm: false,
+          bundleHandling,
           formatId: selectedFormatId
         })
       });
@@ -337,6 +347,10 @@
         return;
       }
 
+      bundleLines = data.bundleLines ?? [];
+      bundleErrors = data.bundleErrors ?? [];
+      skippedBundles = data.skippedBundles ?? [];
+      bundlePreviewToken = data.bundlePreviewToken ?? '';
       preview = data.matches;
       nameChanges = data.nameChanges ?? [];
       stats = {
@@ -367,6 +381,8 @@
           productionDate,
           filename: filename || 'pasted.csv',
           confirm: true,
+          bundleHandling,
+          bundlePreviewToken,
           manualMatches,
           formatId: selectedFormatId
         })
@@ -462,8 +478,34 @@
     </button>
   </div>
 
+  {#if hasBundles || bundleLines.length || bundleErrors.length || skippedBundles.length}
+    <div class="bundle-options">
+    <label for="bundle-handling">Bundle lines in this export</label>
+    <select id="bundle-handling" bind:value={bundleHandling} onchange={()=>preview=null} disabled={loading}>
+      <option value="expand">Parent bundle lines only — expand into products</option>
+      <option value="components">Already expanded — ignore bundle parent lines</option>
+    </select>
+    <p>Choose “Already expanded” if the export includes component lines for the same bundles, to avoid double counting. Bag-count subscriptions need one original record per subscription.</p>
+    </div>
+  {/if}
+
   {#if preview}
     <div class="preview-section">
+      {#if bundleErrors.length}
+        <div role="alert" class="error"><strong>Bundle setup needs attention — nothing will be imported until these are resolved.</strong>
+          <ul>{#each bundleErrors as issue}<li>Record {issue.record}: {issue.name} — {issue.error}</li>{/each}</ul>
+          <p>Update Catalog → Bundles, then preview again.</p>
+        </div>
+      {/if}
+      {#if skippedBundles.length}<p>Ignoring {skippedBundles.length} bundle parent line(s). Only the exported component products will be imported.</p>{/if}
+      {#if bundleLines.length}
+        <details class="cleanup-summary" open>
+          <summary>Bundle expansion — {bundleLines.length} source line(s)</summary>
+          <p>Contents use production date {productionDate}. Confirmed imports keep these selections when lineups change.</p>
+          {#each bundleLines as line}<div><strong>Record {line.source_record}: {line.name} · {line.source_quantity} {line.quantity_mode}</strong>
+            <ul>{#each line.components as c}<li>{c.name} × {c.quantity}</li>{/each}</ul></div>{/each}
+        </details>
+      {/if}
       {#if nameChanges.length > 0}
         <details class="cleanup-summary">
           <summary>Name cleanup changed {nameChanges.length} CSV record(s)</summary>
@@ -721,7 +763,7 @@
           </p>
         {/if}
 
-        <button type="button" onclick={handleConfirm} disabled={loading || stats.matched === 0}>
+        <button type="button" onclick={handleConfirm} disabled={loading || stats.matched === 0 || bundleErrors.length > 0}>
           Import {stats.matched} Order{stats.matched !== 1 ? 's' : ''}
         </button>
         <button type="button" onclick={() => preview = null} disabled={loading}>
@@ -733,6 +775,10 @@
 </div>
 
 <style>
+  .bundle-options { margin:16px 0; padding:12px; border:1px solid var(--border); font-size:12px; line-height:1.5; }
+  .bundle-options label {display:block;margin-bottom:6px;font-weight:600;}
+  .bundle-options select {width:100%;padding:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);font:inherit;}
+  .bundle-options p {margin:8px 0 0;color:var(--text-muted);}
   .cleanup-summary { margin-bottom: 16px; overflow-wrap: anywhere; }
   .cleanup-summary li { margin-block: 8px; }
   .csv-import {

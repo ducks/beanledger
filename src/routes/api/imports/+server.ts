@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { query } from '$lib/db';
+import { query, withTransaction } from '$lib/db';
 
 /**
  * GET /api/imports?date=YYYY-MM-DD
@@ -44,24 +44,26 @@ export const DELETE: RequestHandler = async ({ url, locals }) => {
   // Verify the import belongs to this tenant
   const importResult = await query(
     'SELECT id FROM imports WHERE id = $1 AND tenant_id = $2',
-    [importId, locals.tenant.id]
+    [importId, locals.tenant!.id]
   );
 
   if (importResult.rows.length === 0) {
     return json({ error: 'Import not found' }, { status: 404 });
   }
 
-  // Delete all orders from this import batch
-  await query(
-    'DELETE FROM orders WHERE import_batch_id = $1 AND tenant_id = $2',
-    [importId, locals.tenant.id]
-  );
+  // Keep source records and expanded orders consistent if deletion fails.
+  await withTransaction(async client => {
+    await client.query(
+      'DELETE FROM orders WHERE import_batch_id = $1 AND tenant_id = $2',
+      [importId, locals.tenant!.id]
+    );
 
-  // Delete the import record
-  await query(
-    'DELETE FROM imports WHERE id = $1 AND tenant_id = $2',
-    [importId, locals.tenant.id]
-  );
+    // Parent bundle lines cascade from the import.
+    await client.query(
+      'DELETE FROM imports WHERE id = $1 AND tenant_id = $2',
+      [importId, locals.tenant!.id]
+    );
+  });
 
   return json({ success: true });
 };

@@ -99,7 +99,8 @@ export function parseWithConfig(csvText: string, config: GenericFormatConfig): C
 
 export function parseWithConfigDetails(
   csvText: string,
-  config: GenericFormatConfig
+  config: GenericFormatConfig,
+  preserveSourceQuantities = false
 ): { rows: CsvRow[]; names: NameChange[] } {
   const cleanName = compileNameRules(config.nameCleanupRules);
   const names: NameChange[] = [];
@@ -125,12 +126,14 @@ export function parseWithConfigDetails(
     const original = resolveProductName(config.productNameColumn, cols, headerIndex);
     const qty = parseInt(cols[qtyCol], 10);
 
-    if (!original || isNaN(qty) || qty <= 0) continue;
+    if (!original) continue;
     const productName = cleanName(original);
+    if (preserveSourceQuantities) names.push({ record: index + 2, original, cleaned: productName, quantity: Number(cols[qtyCol]) });
+    if (isNaN(qty) || qty <= 0) continue;
     if (!productName.trim()) {
       throw new NameRuleError(`CSV record ${index + 2}: cleanup removed the entire product name. Adjust the rules before importing.`);
     }
-    names.push({ record: index + 2, original, cleaned: productName, quantity: qty });
+    if (!preserveSourceQuantities) names.push({ record: index + 2, original, cleaned: productName, quantity: qty });
 
     if (config.aggregate) {
       tally.set(productName, (tally.get(productName) || 0) + qty);

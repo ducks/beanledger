@@ -220,7 +220,7 @@
   }
 
   async function addOrder(product: Product) {
-    const existing = orders.find((o) => o.product_id === product.id);
+    const existing = orders.find((o) => o.product_id === product.id && !o.bundle_line_id);
 
     if (existing) {
       existing.qty += qty;

@@ -21,6 +21,8 @@
     onClose: () => void;
   } = $props();
 
+  const bundlePacks = $derived([...new Map(orders.filter(o=>o.bundle_line_id && o.bundle_snapshot).map(o=>[o.bundle_line_id!,o.bundle_snapshot!])).entries()]);
+
   let pickSort = $state<{ field: 'product' | 'size'; dir: 'asc' | 'desc' }>({
     field: 'size',
     dir: 'desc'
@@ -189,6 +191,18 @@
     </div>
 
     <div class="modal-body">
+      {#if bundlePacks.length}
+        <section class="bundle-packing" aria-label="Bundle packing">
+          <div class="section-title">Bundle packing</div>
+          <p>These bags are already included in the product totals below. Each entry is one original CSV line, not a customer shipping label.</p>
+          {#each bundlePacks as [id,pack] (id)}
+            <div class="bundle-pack"><strong>{pack.name} · {pack.source_quantity} {pack.quantity_mode}</strong>
+              <small>CSV record {pack.source_record}{pack.cycle_start ? ` · cycle ${pack.cycle_start}` : ''}</small>
+              <ul>{#each pack.components as c}<li>{c.name} · {formatPackageSize(c.lbs,units)} × {c.quantity}</li>{/each}</ul>
+            </div>
+          {/each}
+        </section>
+      {/if}
       <!-- Package Size Summary -->
       <div class="size-summary">
         <div class="section-title">Package Size Summary</div>
@@ -268,6 +282,7 @@
 </div>
 
 <style>
+  .bundle-packing { padding:20px; border-bottom:1px solid var(--border); } .bundle-packing p {font-size:12px;} .bundle-pack {padding:12px 0;border-bottom:1px solid var(--border);break-inside:avoid;} .bundle-pack small {display:block;color:var(--text-muted);margin-top:6px;}
   .modal-backdrop {
     position: fixed;
     inset: 0;
